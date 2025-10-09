@@ -1,0 +1,77 @@
+﻿using EtalDeJeux.Api.Data;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Stripe;
+using Stripe.Checkout;
+
+namespace EtalDeJeux.Api.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class CheckoutController(AppDbContext db, IConfiguration cfg) : ControllerBase
+{
+    public record CheckoutItem(Guid SkuId, long Qty);
+    public record CheckoutRequest(List<CheckoutItem> Items, string? Email, string? SuccessUrl, string? CancelUrl);
+
+    [HttpPost("session")]
+    public async Task<IActionResult> CreateSession([FromBody] CheckoutRequest req)
+    {
+        if (req.Items is null || req.Items.Count == 0)
+            return BadRequest(new { error = "Empty items" });
+
+        var skuIds = req.Items.Select(i => i.SkuId).ToList();
+
+        var skus = await db.Skus.AsNoTracking()
+            .Include(s => s.Product)
+            .Where(s => skuIds.Contains(s.Id))
+            .ToListAsync();
+
+        if (skus.Count != skuIds.Count)
+            return BadRequest(new { error = "Unknown SKU" });
+
+        if (skus.Any(s => s.Stock <= 0 || !s.Active || !s.Product.Active))
+            return BadRequest(new { error = "One or more items are unavailable" });
+
+        var stripeKey = Environment.GetEnvironmentVariable("STRIPE_SECRET");
+        if (string.IsNullOrWhiteSpace(stripeKey))
+        {
+            // Mode dev: renvoie une URL “fake” pour que le front puisse rediriger
+            return Ok(new { url = "https://checkout.stripe.com/test_session" });
+        }
+
+        StripeConfiguration.ApiKey = stripeKey;
+
+        var lineItems = req.Items.Select(i =>
+        {
+            var sku = skus.First(s => s.Id == i.SkuId);
+            return new SessionLineItemOptions
+            {
+                Quantity = i.Qty,
+                PriceData = new SessionLineItemPriceDataOptions
+                {
+                    UnitAmount = sku.PriceCents,
+                    Currency = sku.Currency,
+                    ProductData = new SessionLineItemPriceDataProductDataOptions
+                    {
+                        Name = $"{sku.Product.Name} — {sku.Name}",
+                        Images = sku.Product.Images?.Take(1).ToList()
+                    }
+                }
+            };
+        }).ToList();
+
+        var options = new SessionCreateOptions
+        {
+            Mode = "payment",
+            LineItems = lineItems,
+            SuccessUrl = req.SuccessUrl ?? "http://localhost:5173/success?session_id={CHECKOUT_SESSION_ID}",
+            CancelUrl = req.CancelUrl ?? "http://localhost:5173/cancel",
+            CustomerEmail = string.IsNullOrWhiteSpace(req.Email) ? null : req.Email
+        };
+
+        var service = new SessionService();
+        var session = await service.CreateAsync(options);
+
+        return Ok(new { url = session.Url });
+    }
+}

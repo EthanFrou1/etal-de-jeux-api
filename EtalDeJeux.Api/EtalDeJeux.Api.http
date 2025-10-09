@@ -1,0 +1,6 @@
+@EtalDeJeux.Api_HostAddress = http://localhost:5188
+
+GET {{EtalDeJeux.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
