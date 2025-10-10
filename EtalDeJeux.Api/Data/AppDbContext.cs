@@ -1,5 +1,6 @@
 using EtalDeJeux.Api.Models;
 using Microsoft.EntityFrameworkCore;
+using Npgsql.NameTranslation;
 
 namespace EtalDeJeux.Api.Data;
 
@@ -19,8 +20,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     {
         base.OnModelCreating(b);
 
-        b.HasPostgresEnum<ProductType>();
-        b.HasPostgresEnum<FileKind>();
+        var nameTranslator = new NpgsqlSnakeCaseNameTranslator();
+
+        b.HasPostgresEnum<ProductType>(nameTranslator: nameTranslator);
+        b.HasPostgresEnum<FileKind>(nameTranslator: nameTranslator);
 
         b.Entity<Product>(entity =>
         {

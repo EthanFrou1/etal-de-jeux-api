@@ -1,9 +1,10 @@
 using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
+using EtalDeJeux.Api.Serialization;
 
 namespace EtalDeJeux.Api.Models;
 
-[JsonConverter(typeof(JsonStringEnumMemberConverter))]
+[JsonConverter(typeof(EnumMemberJsonConverter<FileKind>))]
 public enum FileKind
 {
     [EnumMember(Value = "pdf")]
