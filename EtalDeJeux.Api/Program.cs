@@ -2,6 +2,7 @@ using EtalDeJeux.Api.Data;
 using EtalDeJeux.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using Npgsql.NameTranslation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,9 +12,10 @@ var connStr =
     ?? throw new Exception("Missing Postgres connection string");
 
 var dsBuilder = new NpgsqlDataSourceBuilder(connStr);
+var nameTranslator = new NpgsqlSnakeCaseNameTranslator();
 dsBuilder.EnableDynamicJson();
-dsBuilder.MapEnum<ProductType>("product_type");
-dsBuilder.MapEnum<FileKind>("file_kind");
+dsBuilder.MapEnum<ProductType>("product_type", nameTranslator);
+dsBuilder.MapEnum<FileKind>("file_kind", nameTranslator);
 var dataSource = dsBuilder.Build();
 
 builder.Services.AddDbContext<AppDbContext>(o => o.UseNpgsql(dataSource));
