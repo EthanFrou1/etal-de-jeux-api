@@ -17,8 +17,9 @@ public class Product
 
     public string? Description { get; set; }
 
-    [Column(TypeName = "product_type")]
-    public ProductType Type { get; set; } = ProductType.BoardGame;
+    [MaxLength(40)]
+    [Column(TypeName = "text")]
+    public string? Type { get; set; }
 
     [MaxLength(80)]
     public string? Category { get; set; }

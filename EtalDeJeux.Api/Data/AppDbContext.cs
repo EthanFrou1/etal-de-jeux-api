@@ -1,4 +1,4 @@
-using EtalDeJeux.Api.Models;
+﻿using EtalDeJeux.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using Npgsql.NameTranslation;
 
@@ -22,89 +22,61 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         var nameTranslator = new NpgsqlSnakeCaseNameTranslator();
 
-        b.HasPostgresEnum<ProductType>(nameTranslator: nameTranslator);
-        b.HasPostgresEnum<FileKind>(nameTranslator: nameTranslator);
-
-        b.Entity<Product>(entity =>
+        // --- Entities ---
+        b.Entity<Product>(e =>
         {
-            entity.HasIndex(p => p.Slug).IsUnique();
+            e.HasIndex(p => p.Slug).IsUnique();
 
-            entity.Property(p => p.Images).HasColumnType("jsonb");
-            entity.Property(p => p.Languages).HasColumnType("text[]");
-            entity.Property(p => p.Contents).HasColumnType("jsonb");
-            entity.Property(p => p.CreatedAt).HasDefaultValueSql("now()");
-            entity.Property(p => p.UpdatedAt).HasDefaultValueSql("now()");
+            e.Property(p => p.Type).HasColumnType("text");
+            e.Property(p => p.Images).HasColumnType("jsonb");
+            e.Property(p => p.Languages).HasColumnType("text[]");
+            e.Property(p => p.Contents).HasColumnType("jsonb");
+            e.Property(p => p.CreatedAt).HasDefaultValueSql("now()");
+            e.Property(p => p.UpdatedAt).HasDefaultValueSql("now()");
 
-            entity.HasOne(p => p.ParentProduct)
+            e.HasOne(p => p.ParentProduct)
                 .WithMany(p => p.Children)
                 .HasForeignKey(p => p.ParentProductId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            entity.HasMany(p => p.Skus)
+            e.HasMany(p => p.Skus)
                 .WithOne(s => s.Product)
                 .HasForeignKey(s => s.ProductId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasMany(p => p.Files)
+            e.HasMany(p => p.Files)
                 .WithOne(f => f.Product)
                 .HasForeignKey(f => f.ProductId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        b.Entity<Sku>(entity =>
+        b.Entity<Sku>(e =>
         {
-            entity.HasIndex(s => s.SkuCode).IsUnique();
+            e.HasIndex(s => s.SkuCode).IsUnique();
         });
 
-        b.Entity<ProductFile>(entity =>
+        b.Entity<ProductFile>(e =>
         {
-            entity.Property(f => f.Kind).HasDefaultValue(FileKind.Pdf);
-            entity.Property(f => f.IsPublic).HasDefaultValue(true);
+            e.Property(f => f.IsPublic).HasDefaultValue(true);
+            e.Property(f => f.Kind).HasColumnType("text");
         });
 
-        b.Entity<ProductMechanic>(entity =>
+        // --- Relations many-to-many ---
+        b.Entity<ProductMechanic>(e =>
         {
-            entity.HasKey(pm => new { pm.ProductId, pm.MechanicId });
-
-            entity.HasOne(pm => pm.Product)
-                .WithMany(p => p.ProductMechanics)
-                .HasForeignKey(pm => pm.ProductId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(pm => pm.Mechanic)
-                .WithMany(m => m.ProductMechanics)
-                .HasForeignKey(pm => pm.MechanicId)
-                .OnDelete(DeleteBehavior.Cascade);
+            e.ToTable("product_mechanics");
+            e.HasKey(pm => new { pm.ProductId, pm.MechanicId });
+            e.Property(pm => pm.MechanicId).HasColumnName("mechanic_id");
         });
 
-        b.Entity<ProductDesigner>(entity =>
+        b.Entity<ProductDesigner>(e =>
         {
-            entity.HasKey(pd => new { pd.ProductId, pd.DesignerId });
-
-            entity.HasOne(pd => pd.Product)
-                .WithMany(p => p.ProductDesigners)
-                .HasForeignKey(pd => pd.ProductId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(pd => pd.Designer)
-                .WithMany(d => d.ProductDesigners)
-                .HasForeignKey(pd => pd.DesignerId)
-                .OnDelete(DeleteBehavior.Cascade);
+            e.HasKey(pd => new { pd.ProductId, pd.DesignerId });
         });
 
-        b.Entity<ProductPublisher>(entity =>
+        b.Entity<ProductPublisher>(e =>
         {
-            entity.HasKey(pp => new { pp.ProductId, pp.PublisherId });
-
-            entity.HasOne(pp => pp.Product)
-                .WithMany(p => p.ProductPublishers)
-                .HasForeignKey(pp => pp.ProductId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasOne(pp => pp.Publisher)
-                .WithMany(pu => pu.ProductPublishers)
-                .HasForeignKey(pp => pp.PublisherId)
-                .OnDelete(DeleteBehavior.Cascade);
+            e.HasKey(pp => new { pp.ProductId, pp.PublisherId });
         });
     }
 }

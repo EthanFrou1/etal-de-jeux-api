@@ -12,14 +12,14 @@ public record SimpleEntityDto(long Id, string Name);
 
 public record PublisherDto(long Id, string Name, string? Url);
 
-public record ProductFileDto(Guid Id, string Name, string Url, FileKind Kind, bool IsPublic);
+public record ProductFileDto(Guid Id, string Name, string Url, string? Kind, bool IsPublic);
 
 public record ProductDto(
     Guid Id,
     string Slug,
     string Name,
     string? Description,
-    ProductType Type,
+    string? Type,
     string? Category,
     bool Active,
     IReadOnlyList<string> Images,

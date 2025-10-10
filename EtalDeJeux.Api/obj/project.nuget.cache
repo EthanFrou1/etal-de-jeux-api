@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "tWVQrb/EpCo=",
+  "dgSpecHash": "+8gAEuY5D+M=",
   "success": true,
   "projectFilePath": "C:\\Users\\ethan\\Documents\\GitHub\\etal-de-jeux-api\\EtalDeJeux.Api\\EtalDeJeux.Api.csproj",
   "expectedPackageFiles": [
+    "C:\\Users\\ethan\\.nuget\\packages\\efcore.namingconventions\\9.0.0\\efcore.namingconventions.9.0.0.nupkg.sha512",
     "C:\\Users\\ethan\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\ethan\\.nuget\\packages\\microsoft.aspnetcore.openapi\\8.0.8\\microsoft.aspnetcore.openapi.8.0.8.nupkg.sha512",
     "C:\\Users\\ethan\\.nuget\\packages\\microsoft.bcl.asyncinterfaces\\7.0.0\\microsoft.bcl.asyncinterfaces.7.0.0.nupkg.sha512",

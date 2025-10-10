@@ -8,7 +8,7 @@ public class ProductMechanic
 
     public Product Product { get; set; } = default!;
 
-    [Column("MechanicId")]
+    [Column("mechanic_id")]
     public long MechanicId { get; set; }
 
     public Mechanic Mechanic { get; set; } = default!;

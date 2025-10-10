@@ -8,6 +8,7 @@
     ".NETCoreApp,Version=v8.0": {
       "EtalDeJeux.Api/1.0.0": {
         "dependencies": {
+          "EFCore.NamingConventions": "9.0.0",
           "Microsoft.AspNetCore.OpenApi": "8.0.8",
           "Microsoft.EntityFrameworkCore.Design": "9.0.9",
           "Npgsql": "9.0.4",
@@ -17,6 +18,19 @@
         },
         "runtime": {
           "EtalDeJeux.Api.dll": {}
+        }
+      },
+      "EFCore.NamingConventions/9.0.0": {
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "9.0.9",
+          "Microsoft.EntityFrameworkCore.Relational": "9.0.9",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "9.0.9"
+        },
+        "runtime": {
+          "lib/net8.0/EFCore.NamingConventions.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.0.0"
+          }
         }
       },
       "Humanizer.Core/2.14.1": {
@@ -757,6 +771,13 @@
       "type": "project",
       "serviceable": false,
       "sha512": ""
+    },
+    "EFCore.NamingConventions/9.0.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-heKIYzPdEWx+Ba4xuG6jfEssW9rEi7I0lX38eoN7wo7qgg9uw7nn8UEmDQfwGEYPzSDpetCVANnDr5tqt2Asjg==",
+      "path": "efcore.namingconventions/9.0.0",
+      "hashPath": "efcore.namingconventions.9.0.0.nupkg.sha512"
     },
     "Humanizer.Core/2.14.1": {
       "type": "package",

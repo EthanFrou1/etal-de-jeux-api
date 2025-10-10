@@ -10,16 +10,17 @@ public class ProductFile
 
     public Guid ProductId { get; set; }
 
-    public Product Product { get; set; } = default!;
+    public Product? Product { get; set; }
 
     [Required, MaxLength(140)]
-    public string Name { get; set; } = default!;
+    public string? Name { get; set; }
 
     [Required]
-    public string Url { get; set; } = default!;
+    public string? Url { get; set; }
 
-    [Column(TypeName = "file_kind")]
-    public FileKind Kind { get; set; } = FileKind.Pdf;
+    [MaxLength(40)]
+    [Column(TypeName = "text")]
+    public string? Kind { get; set; }
 
-    public bool IsPublic { get; set; } = true;
+    public bool IsPublic { get; set; }
 }
