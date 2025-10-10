@@ -1,4 +1,4 @@
-﻿using EtalDeJeux.Api.Data;
+using EtalDeJeux.Api.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Stripe;
@@ -8,7 +8,7 @@ namespace EtalDeJeux.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class CheckoutController(AppDbContext db, IConfiguration cfg) : ControllerBase
+public class CheckoutController(AppDbContext db) : ControllerBase
 {
     public record CheckoutItem(Guid SkuId, long Qty);
     public record CheckoutRequest(List<CheckoutItem> Items, string? Email, string? SuccessUrl, string? CancelUrl);
@@ -18,6 +18,9 @@ public class CheckoutController(AppDbContext db, IConfiguration cfg) : Controlle
     {
         if (req.Items is null || req.Items.Count == 0)
             return BadRequest(new { error = "Empty items" });
+
+        if (req.Items.Any(i => i.Qty <= 0))
+            return BadRequest(new { error = "Invalid quantity" });
 
         var skuIds = req.Items.Select(i => i.SkuId).ToList();
 
@@ -29,13 +32,19 @@ public class CheckoutController(AppDbContext db, IConfiguration cfg) : Controlle
         if (skus.Count != skuIds.Count)
             return BadRequest(new { error = "Unknown SKU" });
 
-        if (skus.Any(s => s.Stock <= 0 || !s.Active || !s.Product.Active))
-            return BadRequest(new { error = "One or more items are unavailable" });
+        foreach (var item in req.Items)
+        {
+            var sku = skus.First(s => s.Id == item.SkuId);
+            if (!sku.Active || !sku.Product.Active)
+                return BadRequest(new { error = "One or more items are unavailable" });
+
+            if (sku.Stock.HasValue && sku.Stock.Value < item.Qty)
+                return BadRequest(new { error = "Insufficient stock" });
+        }
 
         var stripeKey = Environment.GetEnvironmentVariable("STRIPE_SECRET");
         if (string.IsNullOrWhiteSpace(stripeKey))
         {
-            // Mode dev: renvoie une URL “fake” pour que le front puisse rediriger
             return Ok(new { url = "https://checkout.stripe.com/test_session" });
         }
 
@@ -49,7 +58,7 @@ public class CheckoutController(AppDbContext db, IConfiguration cfg) : Controlle
                 Quantity = i.Qty,
                 PriceData = new SessionLineItemPriceDataOptions
                 {
-                    UnitAmount = sku.PriceCents,
+                    UnitAmount = (long)Math.Round(sku.Price * 100m, 0, MidpointRounding.AwayFromZero),
                     Currency = sku.Currency,
                     ProductData = new SessionLineItemPriceDataProductDataOptions
                     {
