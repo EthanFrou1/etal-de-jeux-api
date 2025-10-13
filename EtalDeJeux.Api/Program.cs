@@ -1,10 +1,12 @@
 ﻿using EtalDeJeux.Api.Data;
 using EtalDeJeux.Api.Models;
+using EtalDeJeux.Api.Options;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Npgsql.NameTranslation;
 using EFCore.NamingConventions;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Stripe;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,12 +29,23 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
 
 builder.Services.AddControllers();
 
+builder.Services.Configure<StripeOptions>(builder.Configuration.GetSection("Stripe"));
+
 builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
     p.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin()
 ));
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+var stripeSecretKey =
+    Environment.GetEnvironmentVariable("STRIPE_SECRET") ??
+    builder.Configuration["Stripe:SecretKey"];
+
+if (!string.IsNullOrWhiteSpace(stripeSecretKey))
+{
+    StripeConfiguration.ApiKey = stripeSecretKey;
+}
 
 var app = builder.Build();
 
