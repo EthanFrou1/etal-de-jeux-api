@@ -1,3 +1,11 @@
+C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\EtalDeJeux.Api.csproj.AssemblyReference.cache
+C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\EtalDeJeux.Api.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\EtalDeJeux.Api.AssemblyInfoInputs.cache
+C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\EtalDeJeux.Api.AssemblyInfo.cs
+C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\EtalDeJeux.Api.csproj.CoreCompileInputs.cache
+C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\EtalDeJeux.Api.MvcApplicationPartsAssemblyInfo.cs
+C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\EtalDeJeux.Api.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\EtalDeJeux.Api.sourcelink.json
 C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\bin\Debug\net8.0\appsettings.Development.json
 C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\bin\Debug\net8.0\appsettings.json
 C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\bin\Debug\net8.0\EtalDeJeux.Api.exe
@@ -117,14 +125,6 @@ C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\bin\Debug\net8.0
 C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\bin\Debug\net8.0\zh-Hans\Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
 C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\bin\Debug\net8.0\zh-Hant\Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.resources.dll
 C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\bin\Debug\net8.0\runtimes\browser\lib\net8.0\System.Text.Encodings.Web.dll
-C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\EtalDeJeux.Api.csproj.AssemblyReference.cache
-C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\EtalDeJeux.Api.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\EtalDeJeux.Api.AssemblyInfoInputs.cache
-C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\EtalDeJeux.Api.AssemblyInfo.cs
-C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\EtalDeJeux.Api.csproj.CoreCompileInputs.cache
-C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\EtalDeJeux.Api.MvcApplicationPartsAssemblyInfo.cs
-C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\EtalDeJeux.Api.MvcApplicationPartsAssemblyInfo.cache
-C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\EtalDeJeux.Api.sourcelink.json
 C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\staticwebassets.build.json
 C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\staticwebassets.development.json
 C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\staticwebassets\msbuild.EtalDeJeux.Api.Microsoft.AspNetCore.StaticWebAssets.props

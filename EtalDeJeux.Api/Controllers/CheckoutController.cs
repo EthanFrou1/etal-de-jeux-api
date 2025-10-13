@@ -64,7 +64,7 @@ public class CheckoutController : ControllerBase
             if (!sku.Active || !sku.Product.Active)
                 return BadRequest(new { error = "One or more items are unavailable" });
 
-            if (sku.Stock.HasValue && sku.Stock.Value < item.Qty)
+            if (sku.StockTotal > 0 && sku.StockTotal < item.Qty)
                 return BadRequest(new { error = "Insufficient stock" });
         }
 

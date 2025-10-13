@@ -5,28 +5,27 @@ namespace EtalDeJeux.Api.Models;
 
 public class Sku
 {
-    [Key]
-    public Guid Id { get; set; }
+    [Key] public Guid Id { get; set; }
 
     [Required, MaxLength(140)]
-    public string Name { get; set; } = default!;
+    public string Name { get; set; }
 
     [Required, MaxLength(64)]
-    public string SkuCode { get; set; } = default!;
+    public string SkuCode { get; set; }
 
-    [Column(TypeName = "numeric(10,2)")]
+    [Column(TypeName = "numeric(12,2)")]
     public decimal Price { get; set; }
 
     [MaxLength(3)]
     public string Currency { get; set; } = "EUR";
 
-    public int? Stock { get; set; }
+    public int StockTotal { get; set; }
+    public int ReservedQty { get; set; }
+    public int SoldQty { get; set; }
 
-    public bool Active { get; set; } = true;
-
+    public bool Active { get; set; }
     public bool IsDefault { get; set; }
 
     public Guid ProductId { get; set; }
-
-    public Product Product { get; set; } = default!;
+    public Product Product { get; set; }
 }

@@ -7,6 +7,7 @@ using Npgsql.NameTranslation;
 using EFCore.NamingConventions;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Stripe;
+using EtalDeJeux.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +42,11 @@ builder.Services.AddSwaggerGen();
 var stripeSecretKey =
     Environment.GetEnvironmentVariable("STRIPE_SECRET") ??
     builder.Configuration["Stripe:SecretKey"];
+
+builder.Services.AddScoped<IReservationService, ReservationService>();
+builder.Services.AddScoped<ICheckoutService, EtalDeJeux.Api.Services.CheckoutService>();
+builder.Services.AddScoped<IVoucherService, VoucherService>();
+
 
 if (!string.IsNullOrWhiteSpace(stripeSecretKey))
 {

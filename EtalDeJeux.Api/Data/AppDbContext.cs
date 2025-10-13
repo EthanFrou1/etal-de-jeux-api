@@ -15,6 +15,17 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Publisher> Publishers => Set<Publisher>();
     public DbSet<ProductPublisher> ProductPublishers => Set<ProductPublisher>();
     public DbSet<ProductFile> ProductFiles => Set<ProductFile>();
+    public DbSet<Reservation> Reservations => Set<Reservation>();
+    public DbSet<ReservationItem> ReservationItems => Set<ReservationItem>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<PaymentEvent> PaymentEvents => Set<PaymentEvent>();
+    public DbSet<WebhookEventRaw> WebhookEventsRaw => Set<WebhookEventRaw>();
+    public DbSet<Voucher> Vouchers => Set<Voucher>();
+    public DbSet<VoucherRedemption> VoucherRedemptions => Set<VoucherRedemption>();
+    public DbSet<OrderEvent> OrderEvents => Set<OrderEvent>();
+
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -78,5 +89,24 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.HasKey(pp => new { pp.ProductId, pp.PublisherId });
         });
+
+        b.Entity<Order>().Property(x => x.Metadata).HasColumnType("jsonb");
+        b.Entity<OrderItem>().Property(x => x.Metadata).HasColumnType("jsonb");
+        b.Entity<Reservation>().Property(x => x.Metadata).HasColumnType("jsonb");
+        b.Entity<Payment>().Property(x => x.Metadata).HasColumnType("jsonb");
+        b.Entity<PaymentEvent>().Property(x => x.Payload).HasColumnType("jsonb");
+        b.Entity<WebhookEventRaw>().Property(x => x.Payload).HasColumnType("jsonb");
+        b.Entity<Voucher>().Property(x => x.Metadata).HasColumnType("jsonb");
+        b.Entity<VoucherRedemption>().Property(x => x.Metadata).HasColumnType("jsonb");
+        b.Entity<OrderEvent>().Property(x => x.Payload).HasColumnType("jsonb");
+
+        // indexes
+        b.Entity<Reservation>().HasIndex(x => new { x.Status, x.ExpiresAt });
+        b.Entity<Order>().HasIndex(x => new { x.Status, x.CreatedAt });
+        b.Entity<Payment>().HasIndex(x => new { x.Status, x.CreatedAt });
+        b.Entity<Voucher>().HasIndex(x => x.Code).IsUnique();
+
+        // unique provider+id
+        b.Entity<Payment>().HasIndex(x => new { x.Provider, x.ProviderPaymentId }).IsUnique();
     }
 }
