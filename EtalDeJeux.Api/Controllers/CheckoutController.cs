@@ -1,6 +1,8 @@
 using EtalDeJeux.Api.Data;
+using EtalDeJeux.Api.Options;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Stripe;
 using Stripe.Checkout;
 
@@ -8,10 +10,34 @@ namespace EtalDeJeux.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class CheckoutController(AppDbContext db) : ControllerBase
+public class CheckoutController : ControllerBase
 {
+    private readonly AppDbContext _db;
+    private readonly StripeOptions _stripeOptions;
+
+    public CheckoutController(AppDbContext db, IOptions<StripeOptions> stripeOptions)
+    {
+        _db = db;
+        _stripeOptions = stripeOptions.Value;
+    }
+
     public record CheckoutItem(Guid SkuId, long Qty);
     public record CheckoutRequest(List<CheckoutItem> Items, string? Email, string? SuccessUrl, string? CancelUrl);
+
+    [HttpGet("config")]
+    public IActionResult GetConfig()
+    {
+        var publishableKey =
+            Environment.GetEnvironmentVariable("STRIPE_PUBLISHABLE") ??
+            _stripeOptions.PublishableKey;
+
+        if (string.IsNullOrWhiteSpace(publishableKey))
+        {
+            return NoContent();
+        }
+
+        return Ok(new { publishableKey });
+    }
 
     [HttpPost("session")]
     public async Task<IActionResult> CreateSession([FromBody] CheckoutRequest req)
@@ -24,7 +50,7 @@ public class CheckoutController(AppDbContext db) : ControllerBase
 
         var skuIds = req.Items.Select(i => i.SkuId).ToList();
 
-        var skus = await db.Skus.AsNoTracking()
+        var skus = await _db.Skus.AsNoTracking()
             .Include(s => s.Product)
             .Where(s => skuIds.Contains(s.Id))
             .ToListAsync();
@@ -42,13 +68,13 @@ public class CheckoutController(AppDbContext db) : ControllerBase
                 return BadRequest(new { error = "Insufficient stock" });
         }
 
-        var stripeKey = Environment.GetEnvironmentVariable("STRIPE_SECRET");
+        var stripeKey =
+            Environment.GetEnvironmentVariable("STRIPE_SECRET") ??
+            _stripeOptions.SecretKey;
         if (string.IsNullOrWhiteSpace(stripeKey))
         {
             return Ok(new { url = "https://checkout.stripe.com/test_session" });
         }
-
-        StripeConfiguration.ApiKey = stripeKey;
 
         var lineItems = req.Items.Select(i =>
         {
@@ -78,7 +104,7 @@ public class CheckoutController(AppDbContext db) : ControllerBase
             CustomerEmail = string.IsNullOrWhiteSpace(req.Email) ? null : req.Email
         };
 
-        var service = new SessionService();
+        var service = new SessionService(new StripeClient(stripeKey));
         var session = await service.CreateAsync(options);
 
         return Ok(new { url = session.Url });
