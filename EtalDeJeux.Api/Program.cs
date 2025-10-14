@@ -32,6 +32,27 @@ builder.Services.AddControllers();
 
 builder.Services.Configure<StripeOptions>(builder.Configuration.GetSection("Stripe"));
 
+builder.Services.AddOptions<EmailJsOptions>()
+    .Configure<IConfiguration>((opt, config) =>
+    {
+        opt.ServiceId = Environment.GetEnvironmentVariable("EMAILJS_SERVICE_ID")
+            ?? config["EmailJs:ServiceId"]
+            ?? string.Empty;
+        opt.TemplateId = Environment.GetEnvironmentVariable("EMAILJS_TEMPLATE_ID")
+            ?? config["EmailJs:TemplateId"]
+            ?? string.Empty;
+        opt.PublicKey = Environment.GetEnvironmentVariable("EMAILJS_PUBLIC_KEY")
+            ?? config["EmailJs:PublicKey"]
+            ?? string.Empty;
+        opt.PrivateKey = Environment.GetEnvironmentVariable("EMAILJS_PRIVATE_KEY")
+            ?? config["EmailJs:PrivateKey"];
+        opt.FromEmail = Environment.GetEnvironmentVariable("EMAIL_FROM")
+            ?? config["EmailJs:FromEmail"]
+            ?? "ethanfrou1@gmail.com";
+        opt.FromName = Environment.GetEnvironmentVariable("EMAIL_FROM_NAME")
+            ?? config["EmailJs:FromName"];
+    });
+
 builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
     p.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin()
 ));
@@ -45,7 +66,7 @@ var stripeSecretKey =
 
 builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<ICheckoutService, EtalDeJeux.Api.Services.CheckoutService>();
-builder.Services.AddScoped<IEmailSender, EmailSender>();
+builder.Services.AddHttpClient<IEmailSender, EmailSender>();
 builder.Services.AddScoped<IOrderEmailService, OrderEmailService>();
 
 if (!string.IsNullOrWhiteSpace(stripeSecretKey))
