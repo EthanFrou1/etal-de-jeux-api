@@ -11,12 +11,12 @@
 using System;
 using System.Reflection;
 
-[assembly: System.Reflection.AssemblyCompanyAttribute("EtalDeJeux.Api")]
+[assembly: System.Reflection.AssemblyCompanyAttribute("EtalDeJeux.Api.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1c0a592c833ac3c7907ebffc6aab31149388c86b")]
-[assembly: System.Reflection.AssemblyProductAttribute("EtalDeJeux.Api")]
-[assembly: System.Reflection.AssemblyTitleAttribute("EtalDeJeux.Api")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9008cc29bcc27b384c7e2cfe4bfb76a28af2f47e")]
+[assembly: System.Reflection.AssemblyProductAttribute("EtalDeJeux.Api.Tests")]
+[assembly: System.Reflection.AssemblyTitleAttribute("EtalDeJeux.Api.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
 
 // Généré par la classe MSBuild WriteCodeFragment.
