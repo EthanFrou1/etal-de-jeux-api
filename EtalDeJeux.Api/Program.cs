@@ -45,8 +45,6 @@ var stripeSecretKey =
 
 builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<ICheckoutService, EtalDeJeux.Api.Services.CheckoutService>();
-builder.Services.AddScoped<IVoucherService, VoucherService>();
-
 
 if (!string.IsNullOrWhiteSpace(stripeSecretKey))
 {
