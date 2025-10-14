@@ -23,6 +23,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<PaymentEvent> PaymentEvents => Set<PaymentEvent>();
     public DbSet<WebhookEventRaw> WebhookEventsRaw => Set<WebhookEventRaw>();
     public DbSet<OrderEvent> OrderEvents => Set<OrderEvent>();
+    public DbSet<EmailLog> EmailLogs => Set<EmailLog>();
 
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -95,6 +96,22 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         b.Entity<PaymentEvent>().Property(x => x.Payload).HasColumnType("jsonb");
         b.Entity<WebhookEventRaw>().Property(x => x.Payload).HasColumnType("jsonb");
         b.Entity<OrderEvent>().Property(x => x.Payload).HasColumnType("jsonb");
+        b.Entity<EmailLog>(e =>
+        {
+            e.Property(x => x.Id).HasDefaultValueSql("gen_random_uuid()");
+            e.Property(x => x.Status).HasMaxLength(32);
+            e.Property(x => x.Subject).HasMaxLength(200);
+            e.Property(x => x.Status).HasDefaultValue("sent");
+            e.Property(x => x.CreatedAt).HasDefaultValueSql("now()");
+
+            e.HasIndex(x => x.OrderId);
+            e.HasIndex(x => x.ToEmail);
+
+            e.HasOne(x => x.Order)
+                .WithMany()
+                .HasForeignKey(x => x.OrderId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
 
         // indexes
         b.Entity<Reservation>().HasIndex(x => new { x.Status, x.ExpiresAt });
