@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Stripe;
 using Stripe.Checkout;
+using System.Collections.Generic;
 
 namespace EtalDeJeux.Api.Controllers;
 
@@ -22,7 +23,13 @@ public class CheckoutController : ControllerBase
     }
 
     public record CheckoutItem(Guid SkuId, long Qty);
-    public record CheckoutRequest(List<CheckoutItem> Items, string? Email, string? SuccessUrl, string? CancelUrl);
+    public record CheckoutRequest(
+        List<CheckoutItem> Items,
+        string? Email,
+        string? SuccessUrl,
+        string? CancelUrl,
+        Guid? ReservationId,
+        Guid? OrderId);
 
     [HttpGet("config")]
     public IActionResult GetConfig()
@@ -95,13 +102,26 @@ public class CheckoutController : ControllerBase
             };
         }).ToList();
 
+        var metadata = new Dictionary<string, string>();
+        if (req.OrderId.HasValue)
+        {
+            metadata["orderId"] = req.OrderId.Value.ToString();
+        }
+
+        if (req.ReservationId.HasValue)
+        {
+            metadata["reservationId"] = req.ReservationId.Value.ToString();
+        }
+
         var options = new SessionCreateOptions
         {
             Mode = "payment",
             LineItems = lineItems,
             SuccessUrl = req.SuccessUrl ?? "http://localhost:5173/success?session_id={CHECKOUT_SESSION_ID}",
             CancelUrl = req.CancelUrl ?? "http://localhost:5173/cancel",
-            CustomerEmail = string.IsNullOrWhiteSpace(req.Email) ? null : req.Email
+            CustomerEmail = string.IsNullOrWhiteSpace(req.Email) ? null : req.Email,
+            ClientReferenceId = req.ReservationId?.ToString(),
+            Metadata = metadata.Count == 0 ? null : metadata
         };
 
         var service = new SessionService(new StripeClient(stripeKey));
