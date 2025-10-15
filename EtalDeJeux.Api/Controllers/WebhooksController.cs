@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System;
+using System.Text;
 using System.Text.Json;
 using EtalDeJeux.Api.Data;
 using EtalDeJeux.Api.Models;
@@ -45,16 +46,45 @@ public class WebhooksController : ControllerBase
         }
 
         var signatureHeader = Request.Headers["Stripe-Signature"].ToString();
+
+        string? eventId = null;
+        string? eventType = null;
+        try
+        {
+            using var document = JsonDocument.Parse(payload);
+            var root = document.RootElement;
+            if (root.TryGetProperty("id", out var idElement) && idElement.ValueKind == JsonValueKind.String)
+            {
+                eventId = idElement.GetString();
+            }
+
+            if (root.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
+            {
+                eventType = typeElement.GetString();
+            }
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogDebug(ex, "Impossible de parser le payload Stripe pour extraire les métadonnées de journalisation");
+        }
+
+        var secret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET")
+             ?? _stripeOptions.Value.WebhookSecret;
+        var hasSecret = !string.IsNullOrWhiteSpace(secret);
+
+        _logger.LogInformation(
+            "Réception de l'événement Stripe {EventType} ({EventId}). Clé secrète configurée : {HasSecret}",
+            eventType ?? "(inconnu)",
+            eventId ?? "(inconnu)",
+            hasSecret);
+
         if (string.IsNullOrWhiteSpace(signatureHeader))
         {
             _logger.LogWarning("Webhook Stripe reçu sans signature");
             return BadRequest();
         }
 
-        var secret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET")
-             ?? _stripeOptions.Value.WebhookSecret;
-
-        if (string.IsNullOrWhiteSpace(secret))
+        if (!hasSecret)
         {
             _logger.LogError("Webhook Stripe reçu mais aucune clé secrète configurée");
             return StatusCode(StatusCodes.Status500InternalServerError, "Stripe webhook secret not configured");
@@ -76,7 +106,7 @@ public class WebhooksController : ControllerBase
             return BadRequest();
         }
 
-        var eventId = stripeEvent.Id;
+        eventId = stripeEvent.Id;
         var type = stripeEvent.Type ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(eventId))
@@ -150,6 +180,13 @@ public class WebhooksController : ControllerBase
 
     private async Task<Order?> HandleCheckoutSessionCompletedAsync(Session session, CancellationToken ct)
     {
+        var customerEmail = session.CustomerDetails?.Email ?? session.CustomerEmail ?? "(inconnu)";
+        _logger.LogInformation(
+            "Traitement de la session Stripe {SessionId} (Email: {CustomerEmail}, Statut de paiement: {PaymentStatus})",
+            session.Id,
+            customerEmail,
+            session.PaymentStatus ?? "(inconnu)");
+
         var reservationId = TryGetGuid(session.ClientReferenceId)
             ?? TryGetGuid(GetMetadataValue(session, "reservation_id"))
             ?? TryGetGuid(GetMetadataValue(session, "reservationId"));
@@ -188,6 +225,12 @@ public class WebhooksController : ControllerBase
                 .SingleOrDefaultAsync(r => r.Id == rid, ct);
         }
 
+        _logger.LogInformation(
+            "Session {SessionId} associée à OrderId={OrderId} ReservationId={ReservationId}",
+            session.Id,
+            order?.Id ?? orderId,
+            reservation?.Id ?? reservationId);
+
         if (order is null)
         {
             if (reservation is null)
@@ -206,6 +249,12 @@ public class WebhooksController : ControllerBase
             };
 
             _db.Orders.Add(order);
+
+            _logger.LogInformation(
+                "Création d'une nouvelle commande {OrderId} à partir de la réservation {ReservationId} pour la session {SessionId}",
+                order.Id,
+                reservation.Id,
+                session.Id);
         }
         else
         {
@@ -221,6 +270,7 @@ public class WebhooksController : ControllerBase
         order.Email = session.CustomerDetails?.Email
             ?? session.CustomerEmail
             ?? order.Email;
+        var previousOrderStatus = order.Status;
         order.Status = "paid";
         order.Currency = currency;
         order.AmountSubtotal = ConvertAmount(session.AmountSubtotal);
@@ -230,11 +280,27 @@ public class WebhooksController : ControllerBase
         order.AmountTotal = ConvertAmount(session.AmountTotal);
         order.UpdatedAt = DateTimeOffset.UtcNow;
 
+        _logger.LogInformation(
+            "Commande {OrderId} : statut {OldStatus} -> {NewStatus}",
+            order.Id,
+            string.IsNullOrWhiteSpace(previousOrderStatus) ? "(aucun)" : previousOrderStatus,
+            order.Status);
+
         if (reservation is not null)
         {
             order.ReservationId = reservation.Id;
+            var previousReservationStatus = reservation.Status;
             reservation.Status = "confirmed";
             reservation.UpdatedAt = DateTimeOffset.UtcNow;
+
+            if (!string.Equals(previousReservationStatus, reservation.Status, StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogInformation(
+                    "Réservation {ReservationId} : statut {OldStatus} -> {NewStatus}",
+                    reservation.Id,
+                    string.IsNullOrWhiteSpace(previousReservationStatus) ? "(aucun)" : previousReservationStatus,
+                    reservation.Status);
+            }
         }
 
         if (order.Items.Count == 0 && reservation?.Items is { Count: > 0 })
@@ -298,6 +364,13 @@ public class WebhooksController : ControllerBase
             _logger.LogWarning("Commande {OrderId} sans e-mail — confirmation non envoyée", order.Id);
             return null;
         }
+
+        _logger.LogInformation(
+            "Session {SessionId}: email client {CustomerEmail} traité avec statut de paiement {PaymentStatus} pour la commande {OrderId}",
+            session.Id,
+            order.Email,
+            session.PaymentStatus ?? "(inconnu)",
+            order.Id);
 
         return order;
     }
