@@ -2,10 +2,12 @@ using EtalDeJeux.Api.Data;
 using EtalDeJeux.Api.Options;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Stripe;
 using Stripe.Checkout;
 using System.Collections.Generic;
+using System.Text;
 
 namespace EtalDeJeux.Api.Controllers;
 
@@ -15,11 +17,13 @@ public class CheckoutController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly StripeOptions _stripeOptions;
+    private readonly ILogger<CheckoutController> _logger;
 
-    public CheckoutController(AppDbContext db, IOptions<StripeOptions> stripeOptions)
+    public CheckoutController(AppDbContext db, IOptions<StripeOptions> stripeOptions, ILogger<CheckoutController> logger)
     {
         _db = db;
         _stripeOptions = stripeOptions.Value;
+        _logger = logger;
     }
 
     public record CheckoutItem(Guid SkuId, long Qty);
@@ -127,6 +131,39 @@ public class CheckoutController : ControllerBase
         var service = new SessionService(new StripeClient(stripeKey));
         var session = await service.CreateAsync(options);
 
+        _logger.LogInformation(
+            "Created Stripe checkout session {SessionId} for client reference {ClientReferenceId} with URL {SessionUrl} and metadata {Metadata}",
+            session.Id,
+            session.ClientReferenceId ?? "(none)",
+            session.Url,
+            FormatMetadata(session.Metadata));
+
         return Ok(new { url = session.Url });
+    }
+
+    private static string FormatMetadata(Dictionary<string, string>? metadata)
+    {
+        if (metadata is null || metadata.Count == 0)
+        {
+            return "{}";
+        }
+
+        var builder = new StringBuilder("{");
+        var first = true;
+        foreach (var (key, value) in metadata)
+        {
+            if (!first)
+            {
+                builder.Append(", ");
+            }
+
+            builder.Append(key);
+            builder.Append('=');
+            builder.Append(value);
+            first = false;
+        }
+
+        builder.Append('}');
+        return builder.ToString();
     }
 }
