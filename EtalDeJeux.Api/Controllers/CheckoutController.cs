@@ -9,6 +9,7 @@ using Stripe.Checkout;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 
 namespace EtalDeJeux.Api.Controllers;
 
@@ -78,7 +79,9 @@ public class CheckoutController : ControllerBase
             {
                 var client = new StripeClient(secretKey);
                 var service = new AccountService(client);
-                account = await service.GetAsync();
+                account = await service.GetAsync(
+                    new AccountGetOptions(),
+                    cancellationToken: HttpContext?.RequestAborted ?? CancellationToken.None);
             }
             catch (StripeException ex)
             {
@@ -140,7 +143,9 @@ public class CheckoutController : ControllerBase
         Account? account = null;
         try
         {
-            account = await accountService.GetAsync();
+            account = await accountService.GetAsync(
+                new AccountGetOptions(),
+                cancellationToken: HttpContext?.RequestAborted ?? CancellationToken.None);
         }
         catch (StripeException ex)
         {
