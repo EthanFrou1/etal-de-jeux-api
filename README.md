@@ -19,11 +19,11 @@ For local development you can copy `appsettings.Development.json` and populate t
    ```bash
    dotnet run --project EtalDeJeux.Api
    ```
-   The API listens on <http://localhost:5106> by default.
+   The API listens on <http://localhost:5188> and <https://localhost:7131> by default.
 
 2. **Start the Stripe CLI forwarder**
    ```bash
-   stripe listen --forward-to localhost:5106/stripe/webhook
+   stripe listen --forward-to https://localhost:7131/api/webhooks/stripe
    ```
    The CLI prints a webhook signing secret (`whsec_…`). Copy this value and export it for the API:
    ```bash
@@ -31,9 +31,21 @@ For local development you can copy `appsettings.Development.json` and populate t
    ```
 
 3. **Trigger a checkout session**
-   - Use the API to create a session:
+   - Use the API to create a session. Replace the sample SKU identifiers with real ones from your catalog (for example, via `GET /api/catalog`).
      ```bash
-     curl -X POST http://localhost:5106/stripe/checkout
+     curl -k -X POST https://localhost:7131/api/checkout/session \
+       -H "Content-Type: application/json" \
+       -d '{
+         "items": [
+           { "skuId": "11111111-1111-1111-1111-111111111111", "qty": 1 },
+           { "skuId": "22222222-2222-2222-2222-222222222222", "qty": 2 }
+         ],
+         "email": "player@example.com",
+         "successUrl": "http://localhost:5173/success?session_id={CHECKOUT_SESSION_ID}",
+         "cancelUrl": "http://localhost:5173/cancel",
+         "reservationId": "33333333-3333-3333-3333-333333333333",
+         "orderId": "44444444-4444-4444-4444-444444444444"
+       }'
      ```
    - Complete the payment with the test card `4242 4242 4242 4242`, any future expiration date, and any CVC.
 
@@ -44,4 +56,4 @@ For local development you can copy `appsettings.Development.json` and populate t
 ### Troubleshooting
 
 - **Account id guard**: If checkout session creation fails, confirm the configured `Stripe:ExpectedAccountId`/`STRIPE_ACCOUNT` matches the account for your API keys. When they differ, the API returns `409 Conflict` with “Mauvais compte de clés Stripe”.
-- **Diagnostic endpoint**: Verify the API is healthy by calling `curl http://localhost:5106/diagnostics` and confirming it returns `200 OK` with the expected JSON payload.
+- **Diagnostic endpoint**: Verify the API is healthy by calling `curl -k https://localhost:7131/api/checkout/config` and confirming it returns `200 OK` with the expected JSON payload.
