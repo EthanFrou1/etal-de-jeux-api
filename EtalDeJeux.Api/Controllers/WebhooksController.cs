@@ -1,7 +1,16 @@
-﻿using EtalDeJeux.Api.Data;
+﻿using System.Text;
+using System.Text.Json;
+using EtalDeJeux.Api.Data;
 using EtalDeJeux.Api.Models;
+using EtalDeJeux.Api.Options;
+using EtalDeJeux.Api.Services;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Stripe;
+using Stripe.Checkout;
 
 namespace EtalDeJeux.Api.Controllers;
 
@@ -10,20 +19,71 @@ namespace EtalDeJeux.Api.Controllers;
 public class WebhooksController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public WebhooksController(AppDbContext db) => _db = db;
+    private readonly IOrderEmailService _orderEmailService;
+    private readonly IOptions<StripeOptions> _stripeOptions;
+    private readonly ILogger<WebhooksController> _logger;
+
+    public WebhooksController(
+        AppDbContext db,
+        IOrderEmailService orderEmailService,
+        IOptions<StripeOptions> stripeOptions,
+        ILogger<WebhooksController> logger)
+    {
+        _db = db;
+        _orderEmailService = orderEmailService;
+        _stripeOptions = stripeOptions;
+        _logger = logger;
+    }
 
     [HttpPost("stripe")]
-    public async Task<IActionResult> Stripe([FromBody] object payloadObj, CancellationToken ct)
+    public async Task<IActionResult> Stripe(CancellationToken ct)
     {
-        var payload = payloadObj?.ToString() ?? "{}";
+        string payload;
+        using (var reader = new StreamReader(Request.Body, Encoding.UTF8, leaveOpen: true))
+        {
+            payload = await reader.ReadToEndAsync();
+        }
 
-        // TODO: vérification de signature Stripe si tu veux
-        // Parse JSON pour extraire: id, type, data.object (session)
-        var eventId = Guid.NewGuid().ToString(); // remplace par l'id réel Stripe
-        var type = "checkout.session.completed"; // remplace par le type réel
+        var signatureHeader = Request.Headers["Stripe-Signature"].ToString();
+        if (string.IsNullOrWhiteSpace(signatureHeader))
+        {
+            _logger.LogWarning("Webhook Stripe reçu sans signature");
+            return BadRequest();
+        }
+
+        var secret = _stripeOptions.Value.WebhookSecret;
+        if (string.IsNullOrWhiteSpace(secret))
+        {
+            _logger.LogError("Webhook Stripe reçu mais aucune clé secrète configurée");
+            return StatusCode(StatusCodes.Status500InternalServerError, "Stripe webhook secret not configured");
+        }
+
+        Event stripeEvent;
+        try
+        {
+            stripeEvent = EventUtility.ConstructEvent(payload, signatureHeader, secret);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Signature Stripe invalide");
+            return BadRequest();
+        }
+
+        var eventId = stripeEvent.Id;
+        var type = stripeEvent.Type ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(eventId))
+        {
+            _logger.LogWarning("Événement Stripe sans identifiant");
+            return BadRequest();
+        }
 
         var exists = await _db.WebhookEventsRaw.AnyAsync(w => w.EventId == eventId, ct);
-        if (exists) return Ok();
+        if (exists)
+        {
+            _logger.LogInformation("Événement Stripe {EventId} déjà traité", eventId);
+            return Ok();
+        }
 
         _db.WebhookEventsRaw.Add(new WebhookEventRaw
         {
@@ -31,9 +91,241 @@ public class WebhooksController : ControllerBase
             Type = type,
             Payload = payload
         });
+
+        Order? orderToEmail = null;
+
+        if (type == Events.CheckoutSessionCompleted)
+        {
+            var session = stripeEvent.Data.Object as Session;
+            session ??= stripeEvent.Data.Object?.RawJObject is { } raw
+                ? StripeEntity.FromJson<Session>(raw.ToString())
+                : null;
+
+            if (session is null)
+            {
+                _logger.LogWarning("Impossible de convertir l'événement {EventId} en session Stripe", eventId);
+            }
+            else
+            {
+                try
+                {
+                    orderToEmail = await HandleCheckoutSessionCompletedAsync(session, ct);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Erreur lors du traitement de la session Stripe {SessionId}", session.Id);
+                }
+            }
+        }
+
         await _db.SaveChangesAsync(ct);
 
-        // TODO: construire Order/Payment via données de la session Stripe
+        if (orderToEmail is not null)
+        {
+            try
+            {
+                await _orderEmailService.SendOrderConfirmationAsync(orderToEmail.Id, null, null, null, true, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erreur lors de l'envoi de l'email de commande {OrderId}", orderToEmail.Id);
+            }
+        }
+
         return Ok();
+    }
+
+    private async Task<Order?> HandleCheckoutSessionCompletedAsync(Session session, CancellationToken ct)
+    {
+        var reservationId = TryGetGuid(session.ClientReferenceId)
+            ?? TryGetGuid(GetMetadataValue(session, "reservation_id"))
+            ?? TryGetGuid(GetMetadataValue(session, "reservationId"));
+
+        var orderId = TryGetGuid(GetMetadataValue(session, "order_id"))
+            ?? TryGetGuid(GetMetadataValue(session, "orderId"));
+
+        Order? order = null;
+        if (orderId.HasValue)
+        {
+            order = await _db.Orders
+                .Include(o => o.Items)
+                .SingleOrDefaultAsync(o => o.Id == orderId.Value, ct);
+        }
+
+        if (order is null && reservationId.HasValue)
+        {
+            order = await _db.Orders
+                .Include(o => o.Items)
+                .SingleOrDefaultAsync(o => o.ReservationId == reservationId.Value, ct);
+        }
+
+        Reservation? reservation = null;
+        if (reservationId.HasValue)
+        {
+            reservation = await _db.Reservations
+                .Include(r => r.Items)
+                .ThenInclude(i => i.Sku)
+                .SingleOrDefaultAsync(r => r.Id == reservationId.Value, ct);
+        }
+        else if (order?.ReservationId is Guid rid)
+        {
+            reservation = await _db.Reservations
+                .Include(r => r.Items)
+                .ThenInclude(i => i.Sku)
+                .SingleOrDefaultAsync(r => r.Id == rid, ct);
+        }
+
+        if (order is null)
+        {
+            if (reservation is null)
+            {
+                _logger.LogWarning("Impossible de trouver une réservation associée à la session {SessionId}", session.Id);
+                return null;
+            }
+
+            var generatedOrderId = orderId ?? Guid.NewGuid();
+            order = new Order
+            {
+                Id = generatedOrderId,
+                ReservationId = reservation.Id,
+                OrderNumber = GetOrCreateOrderNumber(session),
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            _db.Orders.Add(order);
+        }
+        else
+        {
+            await _db.Entry(order).Collection(o => o.Items).LoadAsync(ct);
+            if (string.IsNullOrWhiteSpace(order.OrderNumber))
+            {
+                order.OrderNumber = GetOrCreateOrderNumber(session);
+            }
+        }
+
+        var currency = (session.Currency ?? order.Currency)?.ToUpperInvariant() ?? "EUR";
+
+        order.Email = session.CustomerDetails?.Email
+            ?? session.CustomerEmail
+            ?? order.Email;
+        order.Status = "paid";
+        order.Currency = currency;
+        order.AmountSubtotal = ConvertAmount(session.AmountSubtotal);
+        order.AmountDiscount = ConvertAmount(session.TotalDetails?.AmountDiscount);
+        order.AmountShipping = ConvertAmount(session.TotalDetails?.AmountShipping);
+        order.AmountTax = ConvertAmount(session.TotalDetails?.AmountTax);
+        order.AmountTotal = ConvertAmount(session.AmountTotal);
+        order.UpdatedAt = DateTimeOffset.UtcNow;
+
+        if (reservation is not null)
+        {
+            order.ReservationId = reservation.Id;
+            reservation.Status = "confirmed";
+            reservation.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        if (order.Items.Count == 0 && reservation?.Items is { Count: > 0 })
+        {
+            foreach (var item in reservation.Items)
+            {
+                var skuName = item.Sku?.Name ?? $"SKU {item.SkuId}";
+                var skuPrice = item.Sku?.Price ?? 0m;
+
+                order.Items.Add(new OrderItem
+                {
+                    Id = Guid.NewGuid(),
+                    OrderId = order.Id,
+                    SkuId = item.SkuId,
+                    Qty = item.Qty,
+                    NameSnapshot = skuName,
+                    UnitPrice = skuPrice
+                });
+
+                if (item.Sku is not null)
+                {
+                    item.Sku.ReservedQty = Math.Max(0, item.Sku.ReservedQty - item.Qty);
+                    item.Sku.SoldQty += item.Qty;
+                }
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(session.PaymentIntentId))
+        {
+            var payment = await _db.Payments
+                .SingleOrDefaultAsync(p => p.Provider == "stripe" && p.ProviderPaymentId == session.PaymentIntentId, ct);
+
+            if (payment is null)
+            {
+                payment = new Payment
+                {
+                    Id = Guid.NewGuid(),
+                    Provider = "stripe",
+                    ProviderPaymentId = session.PaymentIntentId,
+                    OrderId = order.Id,
+                    CreatedAt = DateTimeOffset.UtcNow
+                };
+                _db.Payments.Add(payment);
+            }
+
+            payment.OrderId = order.Id;
+            payment.Status = MapPaymentStatus(session.PaymentStatus);
+            payment.Amount = ConvertAmount(session.AmountTotal);
+            payment.Currency = currency;
+            payment.CapturedAt = DateTimeOffset.UtcNow;
+            payment.UpdatedAt = DateTimeOffset.UtcNow;
+            payment.Metadata = JsonSerializer.Serialize(new
+            {
+                sessionId = session.Id,
+                paymentStatus = session.PaymentStatus
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(order.Email))
+        {
+            _logger.LogWarning("Commande {OrderId} sans e-mail — confirmation non envoyée", order.Id);
+            return null;
+        }
+
+        return order;
+    }
+
+    private static Guid? TryGetGuid(string? value)
+    {
+        return Guid.TryParse(value, out var guid) ? guid : null;
+    }
+
+    private static string? GetMetadataValue(Session session, string key)
+    {
+        return session.Metadata != null && session.Metadata.TryGetValue(key, out var val) ? val : null;
+    }
+
+    private static decimal ConvertAmount(long? amount)
+    {
+        return amount.HasValue ? amount.Value / 100m : 0m;
+    }
+
+    private static string MapPaymentStatus(string? status)
+    {
+        return status?.ToLowerInvariant() switch
+        {
+            "paid" => "succeeded",
+            "no_payment_required" => "succeeded",
+            "unpaid" => "pending",
+            "requires_payment_method" => "requires_action",
+            _ => "pending"
+        };
+    }
+
+    private static string GetOrCreateOrderNumber(Session session)
+    {
+        if (session.Metadata != null)
+        {
+            if (session.Metadata.TryGetValue("order_number", out var number) && !string.IsNullOrWhiteSpace(number))
+            {
+                return number;
+            }
+        }
+
+        return $"OJ-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}";
     }
 }
