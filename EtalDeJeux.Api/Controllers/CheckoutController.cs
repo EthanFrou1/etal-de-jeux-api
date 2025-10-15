@@ -79,9 +79,8 @@ public class CheckoutController : ControllerBase
             {
                 var client = new StripeClient(secretKey);
                 var service = new AccountService(client);
-                account = await service.GetAsync(
-                    new AccountGetOptions(),
-                    cancellationToken: HttpContext?.RequestAborted ?? CancellationToken.None);
+                account = await service.GetSelfAsync(cancellationToken: HttpContext?.RequestAborted ?? CancellationToken.None);
+
             }
             catch (StripeException ex)
             {
@@ -143,9 +142,7 @@ public class CheckoutController : ControllerBase
         Account? account = null;
         try
         {
-            account = await accountService.GetAsync(
-                new AccountGetOptions(),
-                cancellationToken: HttpContext?.RequestAborted ?? CancellationToken.None);
+            account = await accountService.GetSelfAsync(cancellationToken: HttpContext?.RequestAborted ?? CancellationToken.None);
         }
         catch (StripeException ex)
         {
