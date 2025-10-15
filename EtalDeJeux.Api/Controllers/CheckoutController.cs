@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Stripe;
 using Stripe.Checkout;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -36,18 +37,65 @@ public class CheckoutController : ControllerBase
         Guid? OrderId);
 
     [HttpGet("config")]
-    public IActionResult GetConfig()
+    public async Task<IActionResult> GetConfig()
     {
+        var secretKey =
+            Environment.GetEnvironmentVariable("STRIPE_SECRET") ??
+            _stripeOptions.SecretKey;
+
         var publishableKey =
             Environment.GetEnvironmentVariable("STRIPE_PUBLISHABLE") ??
             _stripeOptions.PublishableKey;
 
-        if (string.IsNullOrWhiteSpace(publishableKey))
+        var webhookSecret =
+            Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET") ??
+            _stripeOptions.WebhookSecret;
+
+        var hasWebhookSecret = !string.IsNullOrWhiteSpace(webhookSecret);
+
+        string? mode = null;
+        if (!string.IsNullOrWhiteSpace(secretKey))
+        {
+            mode = secretKey.Contains("_live", StringComparison.OrdinalIgnoreCase)
+                ? "live"
+                : secretKey.Contains("_test", StringComparison.OrdinalIgnoreCase)
+                    ? "test"
+                    : null;
+        }
+        else if (!string.IsNullOrWhiteSpace(publishableKey))
+        {
+            mode = publishableKey.Contains("_live", StringComparison.OrdinalIgnoreCase)
+                ? "live"
+                : publishableKey.Contains("_test", StringComparison.OrdinalIgnoreCase)
+                    ? "test"
+                    : null;
+        }
+
+        Account? account = null;
+        if (!string.IsNullOrWhiteSpace(secretKey))
+        {
+            try
+            {
+                var client = new StripeClient(secretKey);
+                var service = new AccountService(client);
+                account = await service.GetAsync();
+            }
+            catch (StripeException ex)
+            {
+                _logger.LogWarning(ex, "Unable to retrieve Stripe account information with the configured secret key.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Unexpected error while retrieving Stripe account information.");
+            }
+        }
+
+        if (account is null && string.IsNullOrWhiteSpace(publishableKey))
         {
             return NoContent();
         }
 
-        return Ok(new { publishableKey });
+        return Ok(new { account, mode, hasWebhookSecret });
     }
 
     [HttpPost("session")]
@@ -85,6 +133,29 @@ public class CheckoutController : ControllerBase
         if (string.IsNullOrWhiteSpace(stripeKey))
         {
             return Ok(new { url = "https://checkout.stripe.com/test_session" });
+        }
+
+        var stripeClient = new StripeClient(stripeKey);
+        var accountService = new AccountService(stripeClient);
+        Account? account = null;
+        try
+        {
+            account = await accountService.GetAsync();
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogWarning(ex, "Unable to verify Stripe account before creating checkout session.");
+        }
+
+        var expectedAccountId =
+            Environment.GetEnvironmentVariable("STRIPE_ACCOUNT") ??
+            _stripeOptions.ExpectedAccountId;
+
+        if (!string.IsNullOrWhiteSpace(expectedAccountId) &&
+            account is not null &&
+            !string.Equals(account.Id, expectedAccountId, StringComparison.Ordinal))
+        {
+            return Conflict(new { error = "Mauvais compte de clés Stripe" });
         }
 
         var lineItems = req.Items.Select(i =>
@@ -128,7 +199,7 @@ public class CheckoutController : ControllerBase
             Metadata = metadata.Count == 0 ? null : metadata
         };
 
-        var service = new SessionService(new StripeClient(stripeKey));
+        var service = new SessionService(stripeClient);
         var session = await service.CreateAsync(options);
 
         _logger.LogInformation(
