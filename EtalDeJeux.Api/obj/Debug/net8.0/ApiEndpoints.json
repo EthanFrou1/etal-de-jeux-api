@@ -1,7 +1,7 @@
 [
   {
     "ContainingType": "Program\u002B\u003C\u003Ec",
-    "Method": "\u003C\u003CMain\u003E$\u003Eb__0_2",
+    "Method": "\u003C\u003CMain\u003E$\u003Eb__0_3",
     "RelativePath": "",
     "HttpMethod": "GET",
     "IsController": false,
@@ -14,6 +14,16 @@
         "StatusCode": 200
       }
     ]
+  },
+  {
+    "ContainingType": "EtalDeJeux.Api.Controllers.CheckoutController",
+    "Method": "GetConfig",
+    "RelativePath": "api/Checkout/config",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
   },
   {
     "ContainingType": "EtalDeJeux.Api.Controllers.CheckoutController",
@@ -30,6 +40,99 @@
       }
     ],
     "ReturnTypes": []
+  },
+  {
+    "ContainingType": "EtalDeJeux.Api.Controllers.EmailsController",
+    "Method": "GetEmailLogs",
+    "RelativePath": "api/email-logs",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "page",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "pageSize",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "q",
+        "Type": "System.String",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "EtalDeJeux.Api.Contracts.Dtos.PaginatedEmailLogsDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "EtalDeJeux.Api.Controllers.EmailsController",
+    "Method": "GetOrderEmails",
+    "RelativePath": "api/orders/{orderId}/emails",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "orderId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "System.Collections.Generic.IEnumerable\u00601[[EtalDeJeux.Api.Contracts.Dtos.EmailLogDto, EtalDeJeux.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "EtalDeJeux.Api.Controllers.EmailsController",
+    "Method": "SendOrderConfirmation",
+    "RelativePath": "api/orders/{orderId}/emails/confirm",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "orderId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      },
+      {
+        "Name": "dto",
+        "Type": "EtalDeJeux.Api.Contracts.Dtos.SendOrderEmailDto",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "EtalDeJeux.Api.Contracts.Dtos.EmailLogDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
   },
   {
     "ContainingType": "EtalDeJeux.Api.Controllers.ProductsController",
@@ -92,5 +195,41 @@
         "StatusCode": 200
       }
     ]
+  },
+  {
+    "ContainingType": "EtalDeJeux.Api.Controllers.ReservationsController",
+    "Method": "Create",
+    "RelativePath": "api/Reservations",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "EtalDeJeux.Api.Contracts.Dtos.CreateReservationDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "EtalDeJeux.Api.Contracts.Dtos.ReservationResponseDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "EtalDeJeux.Api.Controllers.WebhooksController",
+    "Method": "Stripe",
+    "RelativePath": "api/webhooks/stripe",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
   }
 ]

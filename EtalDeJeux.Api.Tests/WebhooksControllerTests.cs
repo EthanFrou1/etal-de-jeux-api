@@ -54,7 +54,7 @@ public class WebhooksControllerTests
         });
         await ctx.SaveChangesAsync();
 
-        var secret = "whsec_test_123";
+        var secret = "whsec_225dc5252541632ba243fc096e0dcbe6441214c488ca7acac6f993a9ebd64efc";
         var payload = BuildCheckoutCompletedPayload(reservation.Id);
         var signature = GenerateStripeSignature(payload, secret);
 

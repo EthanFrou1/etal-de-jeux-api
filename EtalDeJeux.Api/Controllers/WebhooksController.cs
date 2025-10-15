@@ -51,7 +51,9 @@ public class WebhooksController : ControllerBase
             return BadRequest();
         }
 
-        var secret = _stripeOptions.Value.WebhookSecret;
+        var secret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET")
+             ?? _stripeOptions.Value.WebhookSecret;
+
         if (string.IsNullOrWhiteSpace(secret))
         {
             _logger.LogError("Webhook Stripe reçu mais aucune clé secrète configurée");
@@ -61,7 +63,12 @@ public class WebhooksController : ControllerBase
         Event stripeEvent;
         try
         {
-            stripeEvent = EventUtility.ConstructEvent(payload, signatureHeader, secret);
+            stripeEvent = EventUtility.ConstructEvent(
+                payload,
+                signatureHeader,
+                secret,
+                throwOnApiVersionMismatch: false
+            );
         }
         catch (Exception ex)
         {
@@ -94,12 +101,18 @@ public class WebhooksController : ControllerBase
 
         Order? orderToEmail = null;
 
-        if (type == Events.CheckoutSessionCompleted)
+        if (type == EventTypes.CheckoutSessionCompleted)
         {
             var session = stripeEvent.Data.Object as Session;
-            session ??= stripeEvent.Data.Object?.RawJObject is { } raw
-                ? StripeEntity.FromJson<Session>(raw.ToString())
-                : null;
+
+            if (session is null && stripeEvent.Data.Object is StripeEntity entity && entity.RawJObject is { } raw)
+            {
+                var parsedSession = Session.FromJson(raw.ToString());
+                if (parsedSession is not null)
+                {
+                    session = parsedSession;
+                }
+            }
 
             if (session is null)
             {

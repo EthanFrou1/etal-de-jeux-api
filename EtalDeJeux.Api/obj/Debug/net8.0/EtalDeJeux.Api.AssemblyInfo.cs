@@ -11,10 +11,11 @@
 using System;
 using System.Reflection;
 
+[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("a9f9494f-8589-4acb-a39c-82644f37290e")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("EtalDeJeux.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1c0a592c833ac3c7907ebffc6aab31149388c86b")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+83c660b7d68e9515660f32ccff54d0284b69f9c6")]
 [assembly: System.Reflection.AssemblyProductAttribute("EtalDeJeux.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("EtalDeJeux.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
