@@ -1,4 +1,5 @@
 using EtalDeJeux.Api.Data;
+using EtalDeJeux.Api.Models;
 using EtalDeJeux.Api.Options;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +9,6 @@ using Stripe;
 using Stripe.Checkout;
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 
 namespace EtalDeJeux.Api.Controllers;
@@ -160,6 +160,8 @@ public class CheckoutController : ControllerBase
             return Conflict(new { error = "Mauvais compte de clés Stripe" });
         }
 
+        var reservation = await CreateReservationAsync(req, HttpContext?.RequestAborted ?? CancellationToken.None);
+
         var lineItems = req.Items.Select(i =>
         {
             var sku = skus.First(s => s.Id == i.SkuId);
@@ -179,7 +181,11 @@ public class CheckoutController : ControllerBase
             };
         }).ToList();
 
-        var metadata = new Dictionary<string, string>();
+        var metadata = new Dictionary<string, string>
+        {
+            ["reservationId"] = reservation.Id.ToString()
+        };
+
         if (req.OrderId.HasValue)
         {
             metadata["orderId"] = req.OrderId.Value.ToString();
@@ -187,7 +193,7 @@ public class CheckoutController : ControllerBase
 
         if (req.ReservationId.HasValue)
         {
-            metadata["reservationId"] = req.ReservationId.Value.ToString();
+            metadata["legacyReservationId"] = req.ReservationId.Value.ToString();
         }
 
         var options = new SessionCreateOptions
@@ -197,46 +203,75 @@ public class CheckoutController : ControllerBase
             SuccessUrl = req.SuccessUrl ?? "http://localhost:5173/success?session_id={CHECKOUT_SESSION_ID}",
             CancelUrl = req.CancelUrl ?? "http://localhost:5173/cancel",
             CustomerEmail = string.IsNullOrWhiteSpace(req.Email) ? null : req.Email,
-            ClientReferenceId = req.ReservationId?.ToString(),
-            Metadata = metadata.Count == 0 ? null : metadata
+            ClientReferenceId = reservation.Id.ToString(),
+            Metadata = metadata
         };
 
         var service = new SessionService(stripeClient);
         var session = await service.CreateAsync(options);
 
         _logger.LogInformation(
-            "Created Stripe checkout session {SessionId} for client reference {ClientReferenceId} with URL {SessionUrl} and metadata {Metadata}",
+            "Created Stripe checkout session {SessionId} for reservation {ReservationId} with URL {SessionUrl}",
             session.Id,
-            session.ClientReferenceId ?? "(none)",
-            session.Url,
-            FormatMetadata(session.Metadata));
+            reservation.Id,
+            session.Url);
 
         return Ok(new { url = session.Url });
     }
 
-    private static string FormatMetadata(Dictionary<string, string>? metadata)
+    private async Task<Reservation> CreateReservationAsync(CheckoutRequest req, CancellationToken ct)
     {
-        if (metadata is null || metadata.Count == 0)
+        if (req.ReservationId.HasValue)
         {
-            return "{}";
-        }
+            var existing = await _db.Reservations
+                .Include(r => r.Items)
+                .SingleOrDefaultAsync(r => r.Id == req.ReservationId.Value, ct);
 
-        var builder = new StringBuilder("{");
-        var first = true;
-        foreach (var (key, value) in metadata)
-        {
-            if (!first)
+            if (existing is not null)
             {
-                builder.Append(", ");
+                return existing;
             }
 
-            builder.Append(key);
-            builder.Append('=');
-            builder.Append(value);
-            first = false;
+            _logger.LogWarning(
+                "Requested reservation {ReservationId} was not found. A new reservation will be created.",
+                req.ReservationId.Value);
         }
 
-        builder.Append('}');
-        return builder.ToString();
+        var now = DateTimeOffset.UtcNow;
+        var reservation = new Reservation
+        {
+            Id = Guid.NewGuid(),
+            Status = "pending",
+            ExpiresAt = now.AddMinutes(15),
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
+        foreach (var item in req.Items)
+        {
+            if (item.Qty > int.MaxValue)
+            {
+                throw new InvalidOperationException("Quantity exceeds supported range for reservations");
+            }
+
+            reservation.Items.Add(new ReservationItem
+            {
+                Id = Guid.NewGuid(),
+                ReservationId = reservation.Id,
+                SkuId = item.SkuId,
+                Qty = Convert.ToInt32(item.Qty)
+            });
+        }
+
+        _db.Reservations.Add(reservation);
+        _db.ReservationItems.AddRange(reservation.Items);
+        await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "Created reservation {ReservationId} with {ItemCount} items prior to Stripe checkout session creation.",
+            reservation.Id,
+            reservation.Items.Count);
+
+        return reservation;
     }
 }

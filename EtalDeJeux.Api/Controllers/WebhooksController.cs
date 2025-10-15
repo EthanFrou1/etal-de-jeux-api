@@ -180,19 +180,26 @@ public class WebhooksController : ControllerBase
 
     private async Task<Order?> HandleCheckoutSessionCompletedAsync(Session session, CancellationToken ct)
     {
-        var customerEmail = session.CustomerDetails?.Email ?? session.CustomerEmail ?? "(inconnu)";
+        var metadataReservationIdCamel = GetMetadataValue(session, "reservationId");
+        var metadataReservationIdSnake = GetMetadataValue(session, "reservation_id");
+        var metadataOrderIdCamel = GetMetadataValue(session, "orderId");
+        var metadataOrderIdSnake = GetMetadataValue(session, "order_id");
+
         _logger.LogInformation(
-            "Traitement de la session Stripe {SessionId} (Email: {CustomerEmail}, Statut de paiement: {PaymentStatus})",
+            "Traitement de la session Stripe {SessionId} (Email: {CustomerEmail}, ClientReferenceId: {ClientReferenceId}, MetadataReservationId: {MetadataReservationId}, MetadataOrderId: {MetadataOrderId}, Statut de paiement: {PaymentStatus})",
             session.Id,
-            customerEmail,
+            session.CustomerEmail ?? "(aucun)",
+            session.ClientReferenceId ?? "(aucun)",
+            metadataReservationIdCamel ?? metadataReservationIdSnake ?? "(aucun)",
+            metadataOrderIdCamel ?? metadataOrderIdSnake ?? "(aucun)",
             session.PaymentStatus ?? "(inconnu)");
 
         var reservationId = TryGetGuid(session.ClientReferenceId)
-            ?? TryGetGuid(GetMetadataValue(session, "reservation_id"))
-            ?? TryGetGuid(GetMetadataValue(session, "reservationId"));
+            ?? TryGetGuid(metadataReservationIdSnake)
+            ?? TryGetGuid(metadataReservationIdCamel);
 
-        var orderId = TryGetGuid(GetMetadataValue(session, "order_id"))
-            ?? TryGetGuid(GetMetadataValue(session, "orderId"));
+        var orderId = TryGetGuid(metadataOrderIdSnake)
+            ?? TryGetGuid(metadataOrderIdCamel);
 
         Order? order = null;
         if (orderId.HasValue)
