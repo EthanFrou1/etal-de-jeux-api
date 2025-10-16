@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Net.Http.Headers;
 using System.Text;
@@ -43,12 +44,12 @@ public class EmailSender : IEmailSender
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.PrivateKey);
             }
 
-            var payload = new
+            var payload = new Dictionary<string, object?>
             {
-                service_id = _options.ServiceId,
-                template_id = _options.TemplateId,
-                user_id = _options.PublicKey,
-                template_params = new Dictionary<string, object?>
+                ["service_id"] = _options.ServiceId,
+                ["template_id"] = _options.TemplateId,
+                ["user_id"] = _options.PublicKey,
+                ["template_params"] = new Dictionary<string, object?>
                 {
                     ["subject"] = subject,
                     ["to_email"] = to,
@@ -58,6 +59,11 @@ public class EmailSender : IEmailSender
                     [isHtml ? "message_html" : "message"] = body
                 }
             };
+
+            if (!string.IsNullOrWhiteSpace(_options.PrivateKey))
+            {
+                payload["accessToken"] = _options.PrivateKey;
+            }
 
             request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
@@ -71,8 +77,15 @@ public class EmailSender : IEmailSender
                 return (true, ExtractMessageId(response, content), null);
             }
 
+            var error = content;
+            if (string.IsNullOrWhiteSpace(_options.PrivateKey) &&
+                content.Contains("API-Keys are disabled for browser requests", StringComparison.OrdinalIgnoreCase))
+            {
+                error = "EmailJS private key missing or origin not allowed. Configure EMAILJS_PRIVATE_KEY or authorize the backend domain.";
+            }
+
             _logger.LogError("EmailJS send failed with status {StatusCode}: {Response}", response.StatusCode, content);
-            return (false, null, content);
+            return (false, null, error);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
