@@ -139,3 +139,6 @@ C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0
 C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\EtalDeJeux.Api.pdb
 C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\EtalDeJeux.Api.genruntimeconfig.cache
 C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\obj\Debug\net8.0\ref\EtalDeJeux.Api.dll
+C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\bin\Debug\net8.0\BouncyCastle.Cryptography.dll
+C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\bin\Debug\net8.0\MailKit.dll
+C:\Users\ethan\Documents\GitHub\etal-de-jeux-api\EtalDeJeux.Api\bin\Debug\net8.0\MimeKit.dll

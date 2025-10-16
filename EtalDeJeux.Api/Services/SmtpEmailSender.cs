@@ -33,39 +33,43 @@ public class SmtpEmailSender : IEmailSender
     }
 
     public async Task<(bool ok, string? messageId, string? error)> SendAsync(
-        string to,
-        string subject,
-        string body,
-        bool isHtml,
-        CancellationToken ct)
+     string to, string subject, string body, bool isHtml, CancellationToken ct)
     {
         MimeMessage? message = null;
-
         try
         {
             message = BuildMessage(to, subject, body, isHtml);
 
-            using var client = new SmtpClient();
+            using var client = new SmtpClient
+            {
+                Timeout = 15000 // 15s pour éviter les hangs silencieux
+            };
 
             var secureSocketOptions = ResolveSecureSocketOption();
-            await client.ConnectAsync(_options.Host, _options.Port, secureSocketOptions, ct);
+
+            // 1) Pour tester: n'utilise pas le token d’appel HTTP.
+            var sendCts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+            var token = sendCts.Token; // remplace temporairement `ct`
+
+            await client.ConnectAsync(_options.Host, _options.Port, secureSocketOptions, token);
 
             if (!string.IsNullOrWhiteSpace(_options.UserName))
             {
-                await client.AuthenticateAsync(_options.UserName, _options.Password ?? string.Empty, ct);
+                await client.AuthenticateAsync(_options.UserName, _options.Password ?? string.Empty, token);
             }
 
-            var messageId = await client.SendAsync(message, ct);
-            await client.DisconnectAsync(true, ct);
+            var messageId = await client.SendAsync(message, token);
+            await client.DisconnectAsync(true, token);
 
             var finalMessageId = string.IsNullOrWhiteSpace(messageId) ? message.MessageId : messageId;
             _logger.LogInformation("SMTP email sent to {Recipient} with Message-Id {MessageId}", to, finalMessageId);
 
             return (true, finalMessageId, null);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException oce)
         {
-            throw;
+            _logger.LogWarning(oce, "SMTP send canceled (timeout or external token)");
+            return (false, message?.MessageId, "Envoi annulé (timeout ou requête interrompue).");
         }
         catch (Exception ex)
         {
@@ -73,6 +77,7 @@ public class SmtpEmailSender : IEmailSender
             return (false, message?.MessageId, ex.Message);
         }
     }
+
 
     private MimeMessage BuildMessage(string to, string subject, string body, bool isHtml)
     {
