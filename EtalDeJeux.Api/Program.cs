@@ -3,7 +3,6 @@ using EtalDeJeux.Api.Models;
 using EtalDeJeux.Api.Options;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using Npgsql.NameTranslation;
 using EFCore.NamingConventions;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Stripe;
@@ -32,26 +31,45 @@ builder.Services.AddControllers();
 
 builder.Services.Configure<StripeOptions>(builder.Configuration.GetSection("Stripe"));
 
-builder.Services.AddOptions<EmailJsOptions>()
-    .Configure<IConfiguration>((opt, config) =>
+builder.Services.Configure<SmtpOptions>(opt =>
+{
+    var config = builder.Configuration;
+
+    opt.Host = Environment.GetEnvironmentVariable("SMTP_HOST")
+        ?? config["Smtp:Host"]
+        ?? string.Empty;
+
+    var portValue = Environment.GetEnvironmentVariable("SMTP_PORT")
+        ?? config["Smtp:Port"];
+    opt.Port = int.TryParse(portValue, out var port) ? port : opt.Port;
+
+    opt.UserName = Environment.GetEnvironmentVariable("SMTP_USERNAME")
+        ?? config["Smtp:UserName"];
+
+    opt.Password = Environment.GetEnvironmentVariable("SMTP_PASSWORD")
+        ?? config["Smtp:Password"];
+
+    opt.FromEmail = Environment.GetEnvironmentVariable("EMAIL_FROM")
+        ?? config["Smtp:FromEmail"]
+        ?? string.Empty;
+
+    opt.FromName = Environment.GetEnvironmentVariable("EMAIL_FROM_NAME")
+        ?? config["Smtp:FromName"];
+
+    var useSslValue = Environment.GetEnvironmentVariable("SMTP_USE_SSL")
+        ?? config["Smtp:UseSsl"];
+    if (bool.TryParse(useSslValue, out var useSsl))
     {
-        opt.ServiceId = Environment.GetEnvironmentVariable("EMAILJS_SERVICE_ID")
-            ?? config["EmailJs:ServiceId"]
-            ?? string.Empty;
-        opt.TemplateId = Environment.GetEnvironmentVariable("EMAILJS_TEMPLATE_ID")
-            ?? config["EmailJs:TemplateId"]
-            ?? string.Empty;
-        opt.PublicKey = Environment.GetEnvironmentVariable("EMAILJS_PUBLIC_KEY")
-            ?? config["EmailJs:PublicKey"]
-            ?? string.Empty;
-        opt.PrivateKey = Environment.GetEnvironmentVariable("EMAILJS_PRIVATE_KEY")
-            ?? config["EmailJs:PrivateKey"];
-        opt.FromEmail = Environment.GetEnvironmentVariable("EMAIL_FROM")
-            ?? config["EmailJs:FromEmail"]
-            ?? "ethanfrou1@gmail.com";
-        opt.FromName = Environment.GetEnvironmentVariable("EMAIL_FROM_NAME")
-            ?? config["EmailJs:FromName"];
-    });
+        opt.UseSsl = useSsl;
+    }
+
+    var useStartTlsValue = Environment.GetEnvironmentVariable("SMTP_USE_STARTTLS")
+        ?? config["Smtp:UseStartTls"];
+    if (bool.TryParse(useStartTlsValue, out var useStartTls))
+    {
+        opt.UseStartTls = useStartTls;
+    }
+});
 
 builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
     p.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin()
@@ -66,7 +84,7 @@ var stripeSecretKey =
 
 builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<ICheckoutService, EtalDeJeux.Api.Services.CheckoutService>();
-builder.Services.AddHttpClient<IEmailSender, EmailSender>();
+builder.Services.AddTransient<IEmailSender, SmtpEmailSender>();
 builder.Services.AddScoped<IOrderEmailService, OrderEmailService>();
 
 if (!string.IsNullOrWhiteSpace(stripeSecretKey))
