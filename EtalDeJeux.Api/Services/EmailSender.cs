@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net.Http.Headers;
 using System.Text;
@@ -32,24 +32,21 @@ public class EmailSender : IEmailSender
         }
     }
 
-    public async Task<(bool ok, string? messageId, string? error)> SendAsync(string to, string subject, string body, bool isHtml, CancellationToken ct)
+    public async Task<(bool ok, string? messageId, string? error)> SendAsync(
+     string to, string subject, string body, bool isHtml, CancellationToken ct)
     {
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, EmailJsEndpoint);
-
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            if (!string.IsNullOrWhiteSpace(_options.PrivateKey))
-            {
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.PrivateKey);
-            }
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.PrivateKey);
 
-            var payload = new Dictionary<string, object?>
+            var payload = new
             {
-                ["service_id"] = _options.ServiceId,
-                ["template_id"] = _options.TemplateId,
-                ["user_id"] = _options.PublicKey,
-                ["template_params"] = new Dictionary<string, object?>
+                service_id = _options.ServiceId,
+                template_id = _options.TemplateId,
+                user_id = _options.PublicKey, // <-- requis
+                template_params = new Dictionary<string, object?>
                 {
                     ["subject"] = subject,
                     ["to_email"] = to,
@@ -60,36 +57,18 @@ public class EmailSender : IEmailSender
                 }
             };
 
-            if (!string.IsNullOrWhiteSpace(_options.PrivateKey))
-            {
-                payload["accessToken"] = _options.PrivateKey;
-            }
-
             request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
             var response = await _httpClient.SendAsync(request, ct);
-
             var content = await response.Content.ReadAsStringAsync(ct);
 
             if (response.IsSuccessStatusCode)
-            {
-                _logger.LogInformation("EmailJS send succeeded: {Response}", content);
                 return (true, ExtractMessageId(response, content), null);
-            }
 
-            var error = content;
-            if (string.IsNullOrWhiteSpace(_options.PrivateKey) &&
-                content.Contains("API-Keys are disabled for browser requests", StringComparison.OrdinalIgnoreCase))
-            {
-                error = "EmailJS private key missing or origin not allowed. Configure EMAILJS_PRIVATE_KEY or authorize the backend domain.";
-            }
-
-            _logger.LogError("EmailJS send failed with status {StatusCode}: {Response}", response.StatusCode, content);
-            return (false, null, error);
+            return (false, null, string.IsNullOrWhiteSpace(content) ? $"{(int)response.StatusCode} {response.ReasonPhrase}" : content);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogError(ex, "EmailJS send threw an exception");
             return (false, null, ex.Message);
         }
     }
