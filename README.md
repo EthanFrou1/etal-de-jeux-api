@@ -32,6 +32,14 @@ During development, store sensitive SMTP values with [.NET user secrets](https:/
 
 > ⚠️ Do not commit real API keys, SMTP credentials, or other secrets to the repository. Configuration files such as `appsettings.json` must not contain sensitive values.
 
+## Order email notifications
+
+Two different emails are sent when a checkout is confirmed: one to the customer and one to the shop owner. The owner address can be configured via the `OrderEmails` section or with the `ORDER_EMAIL_OWNER` environment variable. When the value is missing the service falls back to `Smtp:FromEmail`.
+
+| Setting | Environment variable | Description |
+| --- | --- | --- |
+| `OrderEmails:OwnerEmail` | `ORDER_EMAIL_OWNER` | Address that receives the internal copy of the order confirmation. |
+
 ## How to test E2E (local)
 
 1. **Run the API**

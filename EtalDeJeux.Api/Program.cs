@@ -71,6 +71,15 @@ builder.Services.Configure<SmtpOptions>(opt =>
     }
 });
 
+builder.Services.Configure<OrderEmailOptions>(opt =>
+{
+    var config = builder.Configuration;
+
+    opt.OwnerEmail = Environment.GetEnvironmentVariable("ORDER_EMAIL_OWNER")
+        ?? config["OrderEmails:OwnerEmail"]
+        ?? config["Smtp:FromEmail"];
+});
+
 builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
     p.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin()
 ));

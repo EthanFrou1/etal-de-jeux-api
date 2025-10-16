@@ -1,6 +1,28 @@
 namespace EtalDeJeux.Api.Contracts.Dtos;
 
-public record SendOrderEmailDto(string? ToEmail, string? SubjectOverride, string? BodyOverride, bool IsHtml = true);
+public record SendOrderEmailDto
+{
+    public string? ToEmail { get; init; }
+
+    public string? SubjectOverride { get; init; }
+
+    public string? BodyOverride { get; init; }
+
+    public bool IsHtml { get; init; } = true;
+
+    public OrderEmailRecipientDto? Owner { get; init; }
+}
+
+public record OrderEmailRecipientDto
+{
+    public string? ToEmail { get; init; }
+
+    public string? SubjectOverride { get; init; }
+
+    public string? BodyOverride { get; init; }
+
+    public bool? IsHtml { get; init; }
+}
 
 public record EmailLogDto(Guid Id, Guid? OrderId, string ToEmail, string Subject, string? MessageId, string Status, string? Error, DateTimeOffset CreatedAt);
 

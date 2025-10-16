@@ -1,7 +1,11 @@
+using System.Linq;
+using EtalDeJeux.Api.Contracts.Dtos;
 using EtalDeJeux.Api.Data;
 using EtalDeJeux.Api.Models;
+using EtalDeJeux.Api.Options;
 using EtalDeJeux.Api.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
@@ -16,13 +20,18 @@ public class OrderEmailServiceTests
         using var ctx = CreateContext();
         var order = await SeedOrderAsync(ctx);
         var senderMock = new Mock<IEmailSender>();
-        senderMock.Setup(s => s.SendAsync(order.Email, It.IsAny<string>(), It.IsAny<string>(), true, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((true, "msg-123", null));
+        senderMock.SetupSequence(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, "msg-123", null))
+            .ReturnsAsync((true, "msg-owner", null));
 
-        var service = new OrderEmailService(ctx, senderMock.Object);
+        var service = new OrderEmailService(
+            ctx,
+            senderMock.Object,
+            Options.Create(new OrderEmailOptions { OwnerEmail = "owner@example.com" }),
+            Options.Create(new SmtpOptions { FromEmail = "from@example.com" }));
 
         // Act
-        var result = await service.SendOrderConfirmationAsync(order.Id, null, null, null, true, CancellationToken.None);
+        var result = await service.SendOrderConfirmationAsync(order.Id, null, CancellationToken.None);
 
         // Assert
         Assert.Equal("sent", result.Status);
@@ -30,13 +39,18 @@ public class OrderEmailServiceTests
         Assert.Equal(order.Email, result.ToEmail);
         Assert.Contains(order.OrderNumber, result.Subject);
 
-        var log = await ctx.EmailLogs.SingleAsync();
-        Assert.Equal("sent", log.Status);
-        Assert.NotNull(log.Body);
+        var logs = await ctx.EmailLogs.OrderBy(l => l.CreatedAt).ToListAsync();
+        Assert.Equal(2, logs.Count);
+        Assert.Contains(logs, l => l.ToEmail == order.Email && l.Status == "sent");
+        Assert.Contains(logs, l => l.ToEmail == "owner@example.com" && l.Status == "sent");
 
-        var evt = await ctx.OrderEvents.SingleAsync();
-        Assert.Equal("email_confirmation_sent", evt.Type);
-        Assert.Contains("msg-123", evt.Payload);
+        var events = await ctx.OrderEvents.OrderBy(e => e.CreatedAt).ToListAsync();
+        Assert.Equal(2, events.Count);
+        Assert.Contains(events, e => e.Type == "email_confirmation_sent");
+        Assert.Contains(events, e => e.Type == "email_confirmation_sent_owner");
+
+        senderMock.Verify(s => s.SendAsync(order.Email, It.IsAny<string>(), It.IsAny<string>(), true, It.IsAny<CancellationToken>()), Times.Once);
+        senderMock.Verify(s => s.SendAsync("owner@example.com", It.IsAny<string>(), It.IsAny<string>(), true, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -45,22 +59,30 @@ public class OrderEmailServiceTests
         using var ctx = CreateContext();
         var order = await SeedOrderAsync(ctx);
         var senderMock = new Mock<IEmailSender>();
-        senderMock.Setup(s => s.SendAsync(order.Email, It.IsAny<string>(), It.IsAny<string>(), true, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((false, null, "smtp down"));
+        senderMock.SetupSequence(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((false, null, "smtp down"))
+            .ReturnsAsync((true, "msg-owner", null));
 
-        var service = new OrderEmailService(ctx, senderMock.Object);
+        var service = new OrderEmailService(
+            ctx,
+            senderMock.Object,
+            Options.Create(new OrderEmailOptions { OwnerEmail = "owner@example.com" }),
+            Options.Create(new SmtpOptions { FromEmail = "from@example.com" }));
 
-        var result = await service.SendOrderConfirmationAsync(order.Id, null, null, null, true, CancellationToken.None);
+        var result = await service.SendOrderConfirmationAsync(order.Id, null, CancellationToken.None);
 
         Assert.Equal("failed", result.Status);
         Assert.Equal("smtp down", result.Error);
 
-        var log = await ctx.EmailLogs.SingleAsync();
-        Assert.Equal("failed", log.Status);
-        Assert.Equal("smtp down", log.Error);
+        var logs = await ctx.EmailLogs.OrderBy(l => l.CreatedAt).ToListAsync();
+        Assert.Equal(2, logs.Count);
+        Assert.Contains(logs, l => l.ToEmail == order.Email && l.Status == "failed" && l.Error == "smtp down");
+        Assert.Contains(logs, l => l.ToEmail == "owner@example.com" && l.Status == "sent");
 
-        var evt = await ctx.OrderEvents.SingleAsync();
-        Assert.Contains("failed", evt.Payload);
+        var events = await ctx.OrderEvents.OrderBy(e => e.CreatedAt).ToListAsync();
+        Assert.Equal(2, events.Count);
+        Assert.Contains(events, e => e.Type == "email_confirmation_sent" && e.Payload.Contains("failed"));
+        Assert.Contains(events, e => e.Type == "email_confirmation_sent_owner");
     }
 
     [Fact]
@@ -69,20 +91,45 @@ public class OrderEmailServiceTests
         using var ctx = CreateContext();
         var order = await SeedOrderAsync(ctx);
         var senderMock = new Mock<IEmailSender>();
-        senderMock.Setup(s => s.SendAsync("custom@domain.test", "Sujet", "Body", false, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((true, "msg-override", null));
+        senderMock.SetupSequence(s => s.SendAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((true, "msg-override", null))
+            .ReturnsAsync((true, "msg-owner", null));
 
-        var service = new OrderEmailService(ctx, senderMock.Object);
+        var service = new OrderEmailService(
+            ctx,
+            senderMock.Object,
+            Options.Create(new OrderEmailOptions { OwnerEmail = "owner@example.com" }),
+            Options.Create(new SmtpOptions { FromEmail = "from@example.com" }));
 
-        var result = await service.SendOrderConfirmationAsync(order.Id, "custom@domain.test", "Sujet", "Body", false, CancellationToken.None);
+        var result = await service.SendOrderConfirmationAsync(
+            order.Id,
+            new SendOrderEmailDto
+            {
+                ToEmail = "custom@domain.test",
+                SubjectOverride = "Sujet",
+                BodyOverride = "Body",
+                IsHtml = false,
+                Owner = new OrderEmailRecipientDto
+                {
+                    ToEmail = "backoffice@example.com",
+                    SubjectOverride = "Backoffice",
+                    BodyOverride = "OwnerBody",
+                    IsHtml = false
+                }
+            },
+            CancellationToken.None);
 
         Assert.Equal("custom@domain.test", result.ToEmail);
         Assert.Equal("Sujet", result.Subject);
         Assert.Equal("sent", result.Status);
 
-        var log = await ctx.EmailLogs.SingleAsync();
-        Assert.Equal("Body", log.Body);
-        Assert.Equal("msg-override", log.MessageId);
+        var logs = await ctx.EmailLogs.OrderBy(l => l.CreatedAt).ToListAsync();
+        Assert.Equal(2, logs.Count);
+        Assert.Contains(logs, l => l.ToEmail == "custom@domain.test" && l.Body == "Body" && l.MessageId == "msg-override");
+        Assert.Contains(logs, l => l.ToEmail == "backoffice@example.com" && l.Body == "OwnerBody");
+
+        senderMock.Verify(s => s.SendAsync("custom@domain.test", "Sujet", "Body", false, It.IsAny<CancellationToken>()), Times.Once);
+        senderMock.Verify(s => s.SendAsync("backoffice@example.com", "Backoffice", "OwnerBody", false, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     private static AppDbContext CreateContext()

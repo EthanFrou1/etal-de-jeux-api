@@ -166,7 +166,7 @@ public class WebhooksController : ControllerBase
         {
             try
             {
-                await _orderEmailService.SendOrderConfirmationAsync(orderToEmail.Id, null, null, null, true, ct);
+                await _orderEmailService.SendOrderConfirmationAsync(orderToEmail.Id, null, ct);
             }
             catch (Exception ex)
             {

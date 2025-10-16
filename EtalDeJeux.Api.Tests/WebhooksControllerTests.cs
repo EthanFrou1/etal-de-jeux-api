@@ -63,12 +63,9 @@ public class WebhooksControllerTests
         emailService
             .Setup(s => s.SendOrderConfirmationAsync(
                 It.IsAny<Guid>(),
-                It.IsAny<string?>(),
-                It.IsAny<string?>(),
-                It.IsAny<string?>(),
-                It.IsAny<bool>(),
+                It.IsAny<SendOrderEmailDto?>(),
                 It.IsAny<CancellationToken>()))
-            .Callback<Guid, string?, string?, string?, bool, CancellationToken>((orderId, _, _, _, _, _) => emailedOrderId = orderId)
+            .Callback<Guid, SendOrderEmailDto?, CancellationToken>((orderId, _, _) => emailedOrderId = orderId)
             .ReturnsAsync(new EmailLogDto(Guid.NewGuid(), null, "client@example.com", "Sujet", "msg-1", "sent", null, DateTimeOffset.UtcNow));
 
         var logger = new Mock<ILogger<WebhooksController>>();
@@ -132,7 +129,7 @@ public class WebhooksControllerTests
 
         Assert.NotNull(emailedOrderId);
         Assert.Equal(order.Id, emailedOrderId);
-        emailService.Verify(s => s.SendOrderConfirmationAsync(order.Id, null, null, null, true, It.IsAny<CancellationToken>()), Times.Once);
+        emailService.Verify(s => s.SendOrderConfirmationAsync(order.Id, null, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     private static AppDbContext CreateContext()
