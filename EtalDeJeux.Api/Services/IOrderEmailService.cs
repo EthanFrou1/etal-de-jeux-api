@@ -4,5 +4,5 @@ namespace EtalDeJeux.Api.Services;
 
 public interface IOrderEmailService
 {
-    Task<EmailLogDto> SendOrderConfirmationAsync(Guid orderId, string? toEmailOverride, string? subjectOverride, string? bodyOverride, bool isHtml, CancellationToken ct);
+    Task<EmailLogDto> SendOrderConfirmationAsync(Guid orderId, SendOrderEmailDto? overrides, CancellationToken ct);
 }

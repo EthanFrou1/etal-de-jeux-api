@@ -23,11 +23,11 @@ public class EmailsController : ControllerBase
     [HttpPost("orders/{orderId:guid}/emails/confirm")]
     public async Task<ActionResult<EmailLogDto>> SendOrderConfirmation(Guid orderId, [FromBody] SendOrderEmailDto? dto, CancellationToken ct)
     {
-        var payload = dto ?? new SendOrderEmailDto(null, null, null, true);
+        var payload = dto ?? new SendOrderEmailDto();
 
         try
         {
-            var result = await _orderEmailService.SendOrderConfirmationAsync(orderId, payload.ToEmail, payload.SubjectOverride, payload.BodyOverride, payload.IsHtml, ct);
+            var result = await _orderEmailService.SendOrderConfirmationAsync(orderId, payload, ct);
             return Ok(result);
         }
         catch (KeyNotFoundException ex)
