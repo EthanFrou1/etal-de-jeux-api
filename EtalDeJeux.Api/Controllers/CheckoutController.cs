@@ -48,9 +48,7 @@ public class CheckoutController : ControllerBase
             Environment.GetEnvironmentVariable("STRIPE_PUBLISHABLE") ??
             _stripeOptions.PublishableKey;
 
-        var webhookSecret =
-            Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET") ??
-            _stripeOptions.WebhookSecret;
+        var webhookSecret = _stripeOptions.WebhookSecret;
 
         var hasWebhookSecret = !string.IsNullOrWhiteSpace(webhookSecret);
 
@@ -200,8 +198,8 @@ public class CheckoutController : ControllerBase
         {
             Mode = "payment",
             LineItems = lineItems,
-            SuccessUrl = req.SuccessUrl ?? "http://localhost:5173/success?session_id={CHECKOUT_SESSION_ID}",
-            CancelUrl = req.CancelUrl ?? "http://localhost:5173/cancel",
+            SuccessUrl = req.SuccessUrl ?? "http://localhost:8080/success?session_id={CHECKOUT_SESSION_ID}",
+            CancelUrl = req.CancelUrl ?? "http://localhost:8080/cancel",
             CustomerEmail = string.IsNullOrWhiteSpace(req.Email) ? null : req.Email,
             ClientReferenceId = reservation.Id.ToString(),
             Metadata = metadata

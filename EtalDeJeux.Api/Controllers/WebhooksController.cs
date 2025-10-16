@@ -68,8 +68,7 @@ public class WebhooksController : ControllerBase
             _logger.LogDebug(ex, "Impossible de parser le payload Stripe pour extraire les métadonnées de journalisation");
         }
 
-        var secret = Environment.GetEnvironmentVariable("STRIPE_WEBHOOK_SECRET")
-             ?? _stripeOptions.Value.WebhookSecret;
+        var secret = _stripeOptions.Value.WebhookSecret;
         var hasSecret = !string.IsNullOrWhiteSpace(secret);
 
         _logger.LogInformation(
