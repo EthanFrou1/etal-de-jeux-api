@@ -13,6 +13,25 @@ The API can read Stripe credentials from either environment variables or the `St
 
 For local development you can copy `appsettings.Development.json` and populate the Stripe section with keys from your dashboard. If you want to exercise the account verification logic, set `Stripe:ExpectedAccountId` (or `STRIPE_ACCOUNT`) to the account id displayed in the Stripe dashboard (e.g. `acct_1234`). When the secret key belongs to a different account, checkout session creation will return a `409 Conflict` with the message “Mauvais compte de clés Stripe”.
 
+## SMTP configuration
+
+The API reads SMTP credentials from the `Smtp` configuration section or from environment variables. The following keys are supported:
+
+| Setting | Environment variable | Description |
+| --- | --- | --- |
+| `Smtp:Host` | `SMTP_HOST` | SMTP server host name. |
+| `Smtp:Port` | `SMTP_PORT` | SMTP server port (defaults to `587`). |
+| `Smtp:UserName` | `SMTP_USERNAME` | Account user name used to authenticate with the SMTP server. |
+| `Smtp:Password` | `SMTP_PASSWORD` | Account password or application-specific password. |
+| `Smtp:FromEmail` | `EMAIL_FROM` | Sender email address displayed on outgoing messages. |
+| `Smtp:FromName` | `EMAIL_FROM_NAME` | Optional sender display name. |
+| `Smtp:UseSsl` | `SMTP_USE_SSL` | When `true`, enforces SSL from the start of the connection. |
+| `Smtp:UseStartTls` | `SMTP_USE_STARTTLS` | When `true`, upgrades the connection using STARTTLS. |
+
+During development, store sensitive SMTP values with [.NET user secrets](https://learn.microsoft.com/aspnet/core/security/app-secrets#secret-manager) (`dotnet user-secrets`) instead of committing them to `appsettings*.json`. In production, configure the equivalent environment variables through your hosting provider. If you use Gmail, generate an application password and supply it via `SMTP_PASSWORD` (or `Smtp:Password`) instead of your main account password.
+
+> ⚠️ Do not commit real API keys, SMTP credentials, or other secrets to the repository. Configuration files such as `appsettings.json` must not contain sensitive values.
+
 ## How to test E2E (local)
 
 1. **Run the API**
