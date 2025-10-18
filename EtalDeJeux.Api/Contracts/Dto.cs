@@ -4,7 +4,7 @@ using EtalDeJeux.Api.Models;
 
 namespace EtalDeJeux.Api.Contracts;
 
-public record SkuDto(Guid Id, string Name, string SkuCode, decimal Price, string Currency, int StockTotal, bool Active, bool IsDefault);
+public record SkuDto(Guid Id, string Name, string SkuCode, decimal Price, string Currency, int StockTotal, bool Active, bool IsDefault, int SoldQty);
 
 public record ProductContentDto(string Name, int? Quantity);
 
@@ -70,7 +70,7 @@ public static class DtoMapper
             p.Skus
                 .OrderByDescending(s => s.IsDefault)
                 .ThenBy(s => s.Name)
-                .Select(s => new SkuDto(s.Id, s.Name, s.SkuCode, s.Price, s.Currency, s.StockTotal, s.Active, s.IsDefault))
+                .Select(s => new SkuDto(s.Id, s.Name, s.SkuCode, s.Price, s.Currency, s.StockTotal, s.Active, s.IsDefault, s.SoldQty))
                 .ToList(),
             p.ProductMechanics
                 .Select(pm => new SimpleEntityDto(pm.MechanicId, pm.Mechanic.Name))

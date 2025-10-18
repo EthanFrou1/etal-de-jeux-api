@@ -14,8 +14,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EtalDeJeux.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251013143258_AddSkuStockCounters")]
-    partial class AddSkuStockCounters
+    [Migration("20251018115308_SnapshotSync")]
+    partial class SnapshotSync
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -46,6 +46,68 @@ namespace EtalDeJeux.Api.Migrations
                         .HasName("pk_designers");
 
                     b.ToTable("designers", (string)null);
+                });
+
+            modelBuilder.Entity("EtalDeJeux.Api.Models.EmailLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("body");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("text")
+                        .HasColumnName("error");
+
+                    b.Property<string>("MessageId")
+                        .HasColumnType("text")
+                        .HasColumnName("message_id");
+
+                    b.Property<Guid?>("OrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("sent")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("subject");
+
+                    b.Property<string>("ToEmail")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("to_email");
+
+                    b.HasKey("Id")
+                        .HasName("pk_email_logs");
+
+                    b.HasIndex("OrderId")
+                        .HasDatabaseName("ix_email_logs_order_id");
+
+                    b.HasIndex("ToEmail")
+                        .HasDatabaseName("ix_email_logs_to_email");
+
+                    b.ToTable("email_logs", (string)null);
                 });
 
             modelBuilder.Entity("EtalDeJeux.Api.Models.Mechanic", b =>
@@ -674,11 +736,11 @@ namespace EtalDeJeux.Api.Migrations
 
                     b.Property<int>("SoldQty")
                         .HasColumnType("integer")
-                        .HasColumnName("sold_qty");
+                        .HasColumnName("soldQty");
 
                     b.Property<int>("StockTotal")
                         .HasColumnType("integer")
-                        .HasColumnName("stock_total");
+                        .HasColumnName("stockTotal");
 
                     b.HasKey("Id")
                         .HasName("pk_skus");
@@ -691,110 +753,6 @@ namespace EtalDeJeux.Api.Migrations
                         .HasDatabaseName("ix_skus_sku_code");
 
                     b.ToTable("skus", (string)null);
-                });
-
-            modelBuilder.Entity("EtalDeJeux.Api.Models.Voucher", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("code");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<decimal?>("InitialAmount")
-                        .HasColumnType("numeric(12,2)")
-                        .HasColumnName("initial_amount");
-
-                    b.Property<string>("IssuedToEmail")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("issued_to_email");
-
-                    b.Property<string>("Metadata")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("metadata");
-
-                    b.Property<Guid?>("OrderId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("order_id");
-
-                    b.Property<decimal?>("RemainingAmount")
-                        .HasColumnType("numeric(12,2)")
-                        .HasColumnName("remaining_amount");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("status");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("type");
-
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_at");
-
-                    b.Property<DateTimeOffset?>("ValidFrom")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("valid_from");
-
-                    b.Property<DateTimeOffset?>("ValidUntil")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("valid_until");
-
-                    b.HasKey("Id")
-                        .HasName("pk_vouchers");
-
-                    b.HasIndex("Code")
-                        .IsUnique()
-                        .HasDatabaseName("ix_vouchers_code");
-
-                    b.ToTable("vouchers", (string)null);
-                });
-
-            modelBuilder.Entity("EtalDeJeux.Api.Models.VoucherRedemption", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<decimal>("AmountUsed")
-                        .HasColumnType("numeric(12,2)")
-                        .HasColumnName("amount_used");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Metadata")
-                        .IsRequired()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("metadata");
-
-                    b.Property<Guid>("RedeemedByOrderId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("redeemed_by_order_id");
-
-                    b.Property<Guid>("VoucherId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("voucher_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_voucher_redemptions");
-
-                    b.ToTable("voucher_redemptions", (string)null);
                 });
 
             modelBuilder.Entity("EtalDeJeux.Api.Models.WebhookEventRaw", b =>
@@ -827,6 +785,17 @@ namespace EtalDeJeux.Api.Migrations
                         .HasName("pk_webhook_events_raw");
 
                     b.ToTable("webhook_events_raw", (string)null);
+                });
+
+            modelBuilder.Entity("EtalDeJeux.Api.Models.EmailLog", b =>
+                {
+                    b.HasOne("EtalDeJeux.Api.Models.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_email_logs_orders_order_id");
+
+                    b.Navigation("Order");
                 });
 
             modelBuilder.Entity("EtalDeJeux.Api.Models.OrderItem", b =>
