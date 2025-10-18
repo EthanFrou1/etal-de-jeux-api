@@ -63,6 +63,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         b.Entity<Sku>(e =>
         {
             e.HasIndex(s => s.SkuCode).IsUnique();
+
+            e.Property(s => s.StockTotal).HasColumnName("stockTotal");
+            e.Property(s => s.SoldQty).HasColumnName("soldQty");
         });
 
         b.Entity<ProductFile>(e =>
