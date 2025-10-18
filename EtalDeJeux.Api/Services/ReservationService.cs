@@ -14,7 +14,7 @@ public class ReservationService : IReservationService
     {
         var minutes = dto.HoldMinutes ?? 15;
 
-        // Vérif stock simple (existe & actif & stock_total - reserved_qty - sold_qty >= qty)
+        // Vérif stock simple (existe & actif & stockTotal - reserved_qty - soldQty >= qty)
         var skuIds = dto.Items.Select(i => i.SkuId).ToList();
         var skus = await _db.Skus.Where(s => skuIds.Contains(s.Id)).ToListAsync(ct);
 
