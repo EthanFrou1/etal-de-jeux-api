@@ -67,4 +67,23 @@ public class ProductsController(AppDbContext db) : ControllerBase
 
         return Ok(product.ToDto());
     }
+
+    // 
+    [HttpGet("except/{productId:guid}")]
+    public async Task<ActionResult<ProductDto>> GetAllExceptOne(Guid productId)
+    {
+        var items = await db.Products.AsNoTracking()
+       .Where(p => p.Active && p.Id != productId)
+       .Include(p => p.Skus)
+       .Include(p => p.ProductMechanics).ThenInclude(pm => pm.Mechanic)
+       .Include(p => p.ProductDesigners).ThenInclude(pd => pd.Designer)
+       .Include(p => p.ProductPublishers).ThenInclude(pp => pp.Publisher)
+       .Include(p => p.Files)
+       .OrderBy(p => p.Name)
+       .Select(p => p.ToDto())
+       .ToListAsync();
+
+        // Une liste vide n'est pas une 404 : on renvoie [].
+        return Ok(items);
+    }
 }

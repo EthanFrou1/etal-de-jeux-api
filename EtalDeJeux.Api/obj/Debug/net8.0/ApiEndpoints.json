@@ -197,6 +197,32 @@
     ]
   },
   {
+    "ContainingType": "EtalDeJeux.Api.Controllers.ProductsController",
+    "Method": "GetAllExceptOne",
+    "RelativePath": "api/Products/except/{productId}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "productId",
+        "Type": "System.Guid",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "EtalDeJeux.Api.Contracts.ProductDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
     "ContainingType": "EtalDeJeux.Api.Controllers.ReservationsController",
     "Method": "Create",
     "RelativePath": "api/Reservations",
