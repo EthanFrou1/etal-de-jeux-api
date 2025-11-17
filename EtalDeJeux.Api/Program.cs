@@ -12,8 +12,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // --- Connexion PostgreSQL ---
 var connStr =
-    Environment.GetEnvironmentVariable("PG_CONN_STR")
-    ?? builder.Configuration.GetConnectionString("Default")
+    builder.Configuration.GetConnectionString("Default")
+    ?? Environment.GetEnvironmentVariable("PG_CONN_STR")
     ?? throw new Exception("Missing Postgres connection string");
 
 var dsBuilder = new NpgsqlDataSourceBuilder(connStr);
