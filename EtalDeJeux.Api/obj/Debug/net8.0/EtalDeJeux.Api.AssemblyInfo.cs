@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("EtalDeJeux.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+25e53df2a2ef806213d6cfd4720cc9d1ba2e0087")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+10018b8f92be038f7a928bf2e16abc3048bd2d5f")]
 [assembly: System.Reflection.AssemblyProductAttribute("EtalDeJeux.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("EtalDeJeux.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

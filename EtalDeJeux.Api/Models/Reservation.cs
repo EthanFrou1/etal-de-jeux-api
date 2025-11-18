@@ -9,6 +9,9 @@ public class Reservation
 
     [Required]
     public string Status { get; set; } = "pending"; // pending|confirmed|expired|canceled
+    public string Email { get; set; }
+    public decimal TotalAmount { get; set; }
+    public string? StripeSessionId { get; set; }
 
     public DateTimeOffset ExpiresAt { get; set; }
 

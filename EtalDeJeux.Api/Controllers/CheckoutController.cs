@@ -3,13 +3,10 @@ using EtalDeJeux.Api.Models;
 using EtalDeJeux.Api.Options;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Stripe;
 using Stripe.Checkout;
-using System;
-using System.Collections.Generic;
-using System.Threading;
+using static EtalDeJeux.Api.Contracts.Dtos.CheckoutDtos;
 
 namespace EtalDeJeux.Api.Controllers;
 
@@ -26,9 +23,13 @@ public class CheckoutController : ControllerBase
         _db = db;
         _stripeOptions = stripeOptions.Value;
         _logger = logger;
+
+        StripeConfiguration.ApiKey =
+            Environment.GetEnvironmentVariable("STRIPE_SECRET") ??
+            _stripeOptions.SecretKey;
     }
 
-    public record CheckoutItem(Guid SkuId, long Qty);
+    public record CheckoutItem(Guid SkuId, int Qty, bool IsDigital);
     public record CheckoutRequest(
         List<CheckoutItem> Items,
         string? Email,
@@ -99,122 +100,149 @@ public class CheckoutController : ControllerBase
     }
 
     [HttpPost("session")]
-    public async Task<IActionResult> CreateSession([FromBody] CheckoutRequest req)
+    public async Task<ActionResult<CreateCheckoutSessionResponse>> CreateSession(
+          [FromBody] CreateCheckoutSessionRequest request,
+          CancellationToken ct)
     {
-        if (req.Items is null || req.Items.Count == 0)
-            return BadRequest(new { error = "Empty items" });
-
-        if (req.Items.Any(i => i.Qty <= 0))
-            return BadRequest(new { error = "Invalid quantity" });
-
-        var skuIds = req.Items.Select(i => i.SkuId).ToList();
-
-        var skus = await _db.Skus.AsNoTracking()
-            .Include(s => s.Product)
-            .Where(s => skuIds.Contains(s.Id))
-            .ToListAsync();
-
-        if (skus.Count != skuIds.Count)
-            return BadRequest(new { error = "Unknown SKU" });
-
-        foreach (var item in req.Items)
-        {
-            var sku = skus.First(s => s.Id == item.SkuId);
-            if (!sku.Active || !sku.Product.Active)
-                return BadRequest(new { error = "One or more items are unavailable" });
-
-            if (sku.StockTotal > 0 && sku.StockTotal < item.Qty)
-                return BadRequest(new { error = "Insufficient stock" });
-        }
-
-        var stripeKey =
-            Environment.GetEnvironmentVariable("STRIPE_SECRET") ??
-            _stripeOptions.SecretKey;
-        if (string.IsNullOrWhiteSpace(stripeKey))
-        {
-            return Ok(new { url = "https://checkout.stripe.com/test_session" });
-        }
-
-        var stripeClient = new StripeClient(stripeKey);
-        var accountService = new AccountService(stripeClient);
-        Account? account = null;
         try
         {
-            account = await accountService.GetSelfAsync(cancellationToken: HttpContext?.RequestAborted ?? CancellationToken.None);
+            // Gérer le customer
+            Models.Customer? customer = null;
+            if (!string.IsNullOrEmpty(request.Email))
+            {
+                customer = await _db.Customers
+                    .FirstOrDefaultAsync(c => c.Email.ToLower() == request.Email.ToLower(), ct);
+
+                if (customer == null && !string.IsNullOrEmpty(request.FirstName))
+                {
+                    // Créer un nouveau customer
+                    customer = new Models.Customer
+                    {
+                        Id = Guid.NewGuid(),
+                        Email = request.Email,
+                        FirstName = request.FirstName ?? "",
+                        LastName = request.LastName ?? "",
+                        Phone = request.Phone
+                    };
+                    _db.Customers.Add(customer);
+                    await _db.SaveChangesAsync(ct);
+                }
+            }
+
+            var lineItems = new List<SessionLineItemOptions>();
+            var reservationItems = new List<ReservationItem>();
+            decimal totalAmount = 0;
+
+            foreach (var item in request.Items)
+            {
+                var sku = await _db.Skus
+                    .Include(s => s.Product)
+                    .FirstOrDefaultAsync(s =>
+                        s.Id == item.SkuId &&
+                        s.Active, ct);
+
+                if (sku == null)
+                {
+                    return BadRequest(new { error = $"SKU {item.SkuId} introuvable" });
+                }
+
+                if (sku.StockTotal < item.Qty)
+                {
+                    return BadRequest(new
+                    {
+                        error = $"Stock insuffisant pour {sku.Product.Name}"
+                    });
+                }
+
+                lineItems.Add(new SessionLineItemOptions
+                {
+                    PriceData = new SessionLineItemPriceDataOptions
+                    {
+                        Currency = "eur",
+                        ProductData = new SessionLineItemPriceDataProductDataOptions
+                        {
+                            Name = $"{sku.Product.Name}{(string.IsNullOrEmpty(sku.Name) ? "" : $" - {sku.Name}")}",
+                            Images = sku.Product.Images?.Take(1).ToList()
+                        },
+                        UnitAmountDecimal = sku.Price * 100 // Stripe veut des centimes
+                    },
+                    Quantity = item.Qty
+                });
+
+                // Préparer les items de réservation
+                reservationItems.Add(new ReservationItem
+                {
+                    Id = Guid.NewGuid(),
+                    SkuId = sku.Id,
+                    Qty = (int)item.Qty,
+                    UnitPrice = sku.Price,
+                    TotalPrice = sku.Price * item.Qty,
+                });
+
+                totalAmount += sku.Price * item.Qty;
+            }
+
+            // Créer la réservation
+            var reservation = new Reservation
+            {
+                Id = Guid.NewGuid(),
+                Email = request.Email,
+                TotalAmount = totalAmount,
+                Status = "pending",
+                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(30),
+                Items = reservationItems
+            };
+
+            _db.Reservations.Add(reservation);
+
+            // Décrémenter temporairement le stock
+            foreach (var item in request.Items)
+            {
+                var sku = await _db.Skus.FindAsync(item.SkuId);
+                if (sku != null)
+                {
+                    sku.StockTotal -= item.Qty;
+                }
+            }
+
+            await _db.SaveChangesAsync(ct);
+
+            // Créer la session Stripe
+            var options = new SessionCreateOptions
+            {
+                PaymentMethodTypes = new List<string> { "card" },
+                LineItems = lineItems,
+                Mode = "payment",
+                SuccessUrl = request.SuccessUrl,
+                CancelUrl = request.CancelUrl,
+                CustomerEmail = customer?.Email ?? request.Email,
+                Metadata = new Dictionary<string, string>
+                {
+                    { "reservation_id", reservation.Id.ToString() },
+                    { "customer_id", customer?.Id.ToString() ?? "" }
+                },
+                ExpiresAt = DateTime.UtcNow.AddMinutes(30)
+            };
+
+            var service = new SessionService();
+            var session = await service.CreateAsync(options, cancellationToken: ct);
+
+            // Sauvegarder l'ID de session Stripe
+            reservation.StripeSessionId = session.Id;
+            await _db.SaveChangesAsync(ct);
+
+            return Ok(new CreateCheckoutSessionResponse(session.Url));
         }
         catch (StripeException ex)
         {
-            _logger.LogWarning(ex, "Unable to verify Stripe account before creating checkout session.");
+            _logger.LogError(ex, "Erreur Stripe");
+            return BadRequest(new { error = $"Erreur Stripe: {ex.Message}" });
         }
-
-        var expectedAccountId =
-            Environment.GetEnvironmentVariable("STRIPE_ACCOUNT") ??
-            _stripeOptions.ExpectedAccountId;
-
-        if (!string.IsNullOrWhiteSpace(expectedAccountId) &&
-            account is not null &&
-            !string.Equals(account.Id, expectedAccountId, StringComparison.Ordinal))
+        catch (Exception ex)
         {
-            return Conflict(new { error = "Mauvais compte de clés Stripe" });
+            _logger.LogError(ex, "Erreur checkout");
+            return BadRequest(new { error = "Erreur lors de la création de la session" });
         }
-
-        var reservation = await CreateReservationAsync(req, HttpContext?.RequestAborted ?? CancellationToken.None);
-
-        var lineItems = req.Items.Select(i =>
-        {
-            var sku = skus.First(s => s.Id == i.SkuId);
-            return new SessionLineItemOptions
-            {
-                Quantity = i.Qty,
-                PriceData = new SessionLineItemPriceDataOptions
-                {
-                    UnitAmount = (long)Math.Round(sku.Price * 100m, 0, MidpointRounding.AwayFromZero),
-                    Currency = sku.Currency,
-                    ProductData = new SessionLineItemPriceDataProductDataOptions
-                    {
-                        Name = $"{sku.Product.Name} — {sku.Name}",
-                        Images = sku.Product.Images?.Take(1).ToList()
-                    }
-                }
-            };
-        }).ToList();
-
-        var metadata = new Dictionary<string, string>
-        {
-            ["reservationId"] = reservation.Id.ToString()
-        };
-
-        if (req.OrderId.HasValue)
-        {
-            metadata["orderId"] = req.OrderId.Value.ToString();
-        }
-
-        if (req.ReservationId.HasValue)
-        {
-            metadata["legacyReservationId"] = req.ReservationId.Value.ToString();
-        }
-
-        var options = new SessionCreateOptions
-        {
-            Mode = "payment",
-            LineItems = lineItems,
-            SuccessUrl = req.SuccessUrl ?? "http://localhost:8080/success?session_id={CHECKOUT_SESSION_ID}",
-            CancelUrl = req.CancelUrl ?? "http://localhost:8080/cancel",
-            CustomerEmail = string.IsNullOrWhiteSpace(req.Email) ? null : req.Email,
-            ClientReferenceId = reservation.Id.ToString(),
-            Metadata = metadata
-        };
-
-        var service = new SessionService(stripeClient);
-        var session = await service.CreateAsync(options);
-
-        _logger.LogInformation(
-            "Created Stripe checkout session {SessionId} for reservation {ReservationId} with URL {SessionUrl}",
-            session.Id,
-            reservation.Id,
-            session.Url);
-
-        return Ok(new { url = session.Url });
     }
 
     private async Task<Reservation> CreateReservationAsync(CheckoutRequest req, CancellationToken ct)

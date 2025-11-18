@@ -10,7 +10,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Sku> Skus => Set<Sku>();
     public DbSet<Mechanic> Mechanics => Set<Mechanic>();
     public DbSet<ProductMechanic> ProductMechanics => Set<ProductMechanic>();
-    public DbSet<Designer> Designers => Set<Designer>();
+    public DbSet<Designer> Designers => Set<Designer>(); 
+    public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<ProductDesigner> ProductDesigners => Set<ProductDesigner>();
     public DbSet<Publisher> Publishers => Set<Publisher>();
     public DbSet<ProductPublisher> ProductPublishers => Set<ProductPublisher>();
@@ -58,6 +59,25 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 .WithOne(f => f.Product)
                 .HasForeignKey(f => f.ProductId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<Customer>(e =>
+        {
+            e.HasIndex(c => c.Email).IsUnique();
+            e.HasIndex(c => c.StripeCustomerId);
+
+            e.HasMany(c => c.Orders)
+                .WithOne()
+                .HasForeignKey(o => o.CustomerId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // Mise à jour Order pour lier au Customer
+        b.Entity<Order>(e =>
+        {
+            e.HasOne<Customer>()
+                .WithMany(c => c.Orders)
+                .HasForeignKey(o => o.CustomerId);
         });
 
         b.Entity<Sku>(e =>

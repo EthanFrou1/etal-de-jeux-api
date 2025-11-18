@@ -16,6 +16,32 @@
     ]
   },
   {
+    "ContainingType": "EtalDeJeux.Api.Controllers.CartController",
+    "Method": "ValidateCart",
+    "RelativePath": "api/cart/validate",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "EtalDeJeux.Api.Contracts.Dtos.ValidateCartRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "EtalDeJeux.Api.Contracts.Dtos.ValidateCartResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
     "ContainingType": "EtalDeJeux.Api.Controllers.CheckoutController",
     "Method": "GetConfig",
     "RelativePath": "api/Checkout/config",
@@ -34,12 +60,74 @@
     "Order": 0,
     "Parameters": [
       {
-        "Name": "req",
-        "Type": "EtalDeJeux.Api.Controllers.CheckoutController\u002BCheckoutRequest",
+        "Name": "request",
+        "Type": "EtalDeJeux.Api.Contracts.Dtos.CheckoutDtos\u002BCreateCheckoutSessionRequest",
         "IsRequired": true
       }
     ],
-    "ReturnTypes": []
+    "ReturnTypes": [
+      {
+        "Type": "EtalDeJeux.Api.Contracts.Dtos.CheckoutDtos\u002BCreateCheckoutSessionResponse",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "EtalDeJeux.Api.Controllers.CustomersController",
+    "Method": "CreateOrUpdate",
+    "RelativePath": "api/customers",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "EtalDeJeux.Api.Contracts.Dtos.CustomerDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "EtalDeJeux.Api.Contracts.Dtos.CustomerDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "EtalDeJeux.Api.Controllers.CustomersController",
+    "Method": "GetByEmail",
+    "RelativePath": "api/customers/by-email/{email}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "email",
+        "Type": "System.String",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "EtalDeJeux.Api.Contracts.Dtos.CustomerDto",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
   },
   {
     "ContainingType": "EtalDeJeux.Api.Controllers.EmailsController",
