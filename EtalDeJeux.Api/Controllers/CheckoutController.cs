@@ -118,7 +118,7 @@ public class CheckoutController : ControllerBase
                     // Créer un nouveau customer
                     customer = new Models.Customer
                     {
-                        Id = Guid.NewGuid(),
+                        IdCustomer = Guid.NewGuid(),
                         Email = request.Email,
                         FirstName = request.FirstName ?? "",
                         LastName = request.LastName ?? "",
@@ -219,7 +219,7 @@ public class CheckoutController : ControllerBase
                 Metadata = new Dictionary<string, string>
                 {
                     { "reservation_id", reservation.Id.ToString() },
-                    { "customer_id", customer?.Id.ToString() ?? "" }
+                    { "customer_id", customer?.IdCustomer.ToString() ?? "" }
                 },
                 ExpiresAt = DateTime.UtcNow.AddMinutes(30)
             };

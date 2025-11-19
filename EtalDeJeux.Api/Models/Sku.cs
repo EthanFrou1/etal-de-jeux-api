@@ -25,6 +25,7 @@ public class Sku
 
     public bool Active { get; set; }
     public bool IsDefault { get; set; }
+    public bool IsDigital { get; set; }
 
     public Guid ProductId { get; set; }
     public Product Product { get; set; }

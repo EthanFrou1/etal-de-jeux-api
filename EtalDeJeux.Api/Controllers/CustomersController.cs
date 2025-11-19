@@ -71,7 +71,7 @@ public class CustomersController : ControllerBase
                 // Création
                 var newCustomer = new Customer
                 {
-                    Id = Guid.NewGuid(),
+                    IdCustomer = Guid.NewGuid(),
                     Email = dto.Email,
                     FirstName = dto.FirstName,
                     LastName = dto.LastName,

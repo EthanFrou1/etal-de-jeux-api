@@ -23,7 +23,7 @@ public record EnrichedCartItem(
     string SkuId,
     string ProductSlug,
     string Name,
-    string? ImageUrl,
+    List<string>? ImageUrl,
     decimal UnitPrice,
     int RequestedQty,
     int MaxStock,

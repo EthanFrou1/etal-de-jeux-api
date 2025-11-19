@@ -44,15 +44,13 @@ public class CartController : ControllerBase
                     continue;
                 }
 
-                // Gestion spéciale pour les produits digitaux (stock = 999)
-                bool isDigital = sku.StockTotal == 999;
-                var inStock = isDigital || sku.StockTotal >= item.Qty;
-                var actualStock = sku.StockTotal - (isDigital ? 0 : sku.SoldQty);
+                var inStock =  sku.StockTotal >= item.Qty;
+                var actualStock = sku.StockTotal - (sku.IsDigital ? 0 : sku.SoldQty);
 
                 if (!inStock) hasStockIssues = true;
 
                 string? stockWarning = null;
-                if (!isDigital)
+                if (!sku.IsDigital)
                 {
                     if (actualStock <= 5 && actualStock > 0)
                     {
@@ -68,12 +66,12 @@ public class CartController : ControllerBase
                     SkuId: sku.Id.ToString(),
                     ProductSlug: sku.Product.Slug,
                     Name: $"{sku.Product.Name}{(string.IsNullOrEmpty(sku.Name) ? "" : $" - {sku.Name}")}",
-                    null,
+                    ImageUrl: sku.Product.Images,
                     UnitPrice: sku.Price,
                     RequestedQty: item.Qty,
                     MaxStock: actualStock,
                     InStock: inStock,
-                    IsDigital: isDigital,
+                    IsDigital: sku.IsDigital,
                     StockWarning: stockWarning
                 );
 

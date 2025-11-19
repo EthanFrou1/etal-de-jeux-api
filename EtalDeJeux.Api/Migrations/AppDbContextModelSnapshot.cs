@@ -24,6 +24,87 @@ namespace EtalDeJeux.Api.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("EtalDeJeux.Api.Models.Customer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AddressLine1")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("address_line1");
+
+                    b.Property<string>("AddressLine2")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("address_line2");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("city");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("country");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("first_name");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("last_name");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("PostalCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("postal_code");
+
+                    b.Property<string>("StripeCustomerId")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("stripe_customer_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_customers");
+
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasDatabaseName("ix_customers_email");
+
+                    b.HasIndex("StripeCustomerId")
+                        .HasDatabaseName("ix_customers_stripe_customer_id");
+
+                    b.ToTable("customers", (string)null);
+                });
+
             modelBuilder.Entity("EtalDeJeux.Api.Models.Designer", b =>
                 {
                     b.Property<long>("Id")
@@ -198,6 +279,9 @@ namespace EtalDeJeux.Api.Migrations
 
                     b.HasKey("Id")
                         .HasName("pk_orders");
+
+                    b.HasIndex("CustomerId")
+                        .HasDatabaseName("ix_orders_customer_id");
 
                     b.HasIndex("Status", "CreatedAt")
                         .HasDatabaseName("ix_orders_status_created_at");
@@ -628,6 +712,11 @@ namespace EtalDeJeux.Api.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("customer_id");
 
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
                     b.Property<DateTimeOffset>("ExpiresAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
@@ -641,6 +730,14 @@ namespace EtalDeJeux.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("status");
+
+                    b.Property<string>("StripeSessionId")
+                        .HasColumnType("text")
+                        .HasColumnName("stripe_session_id");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("numeric")
+                        .HasColumnName("total_amount");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -674,6 +771,14 @@ namespace EtalDeJeux.Api.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("sku_id");
 
+                    b.Property<decimal>("TotalPrice")
+                        .HasColumnType("numeric")
+                        .HasColumnName("total_price");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("numeric")
+                        .HasColumnName("unit_price");
+
                     b.HasKey("Id")
                         .HasName("pk_reservation_items");
 
@@ -706,6 +811,10 @@ namespace EtalDeJeux.Api.Migrations
                     b.Property<bool>("IsDefault")
                         .HasColumnType("boolean")
                         .HasColumnName("is_default");
+
+                    b.Property<bool>("IsDigital")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_digital");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -793,6 +902,15 @@ namespace EtalDeJeux.Api.Migrations
                         .HasConstraintName("fk_email_logs_orders_order_id");
 
                     b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("EtalDeJeux.Api.Models.Order", b =>
+                {
+                    b.HasOne("EtalDeJeux.Api.Models.Customer", null)
+                        .WithMany("Orders")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_orders_customers_customer_id");
                 });
 
             modelBuilder.Entity("EtalDeJeux.Api.Models.OrderItem", b =>
@@ -936,6 +1054,11 @@ namespace EtalDeJeux.Api.Migrations
                         .HasConstraintName("fk_skus_products_product_id");
 
                     b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("EtalDeJeux.Api.Models.Customer", b =>
+                {
+                    b.Navigation("Orders");
                 });
 
             modelBuilder.Entity("EtalDeJeux.Api.Models.Designer", b =>
