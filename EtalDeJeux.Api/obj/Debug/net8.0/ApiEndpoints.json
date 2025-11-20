@@ -78,6 +78,22 @@
     ]
   },
   {
+    "ContainingType": "EtalDeJeux.Api.Controllers.EmailsController",
+    "Method": "SendContactMessage",
+    "RelativePath": "api/contact",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "dto",
+        "Type": "EtalDeJeux.Api.Contracts.Dtos.ContactMessageDto",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
     "ContainingType": "EtalDeJeux.Api.Controllers.CustomersController",
     "Method": "CreateOrUpdate",
     "RelativePath": "api/customers",

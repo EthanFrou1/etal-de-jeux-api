@@ -118,7 +118,7 @@ public class CheckoutController : ControllerBase
                     // Créer un nouveau customer
                     customer = new Models.Customer
                     {
-                        IdCustomer = Guid.NewGuid(),
+                        Id = Guid.NewGuid(),
                         Email = request.Email,
                         FirstName = request.FirstName ?? "",
                         LastName = request.LastName ?? "",
@@ -182,6 +182,8 @@ public class CheckoutController : ControllerBase
                 totalAmount += sku.Price * item.Qty;
             }
 
+            var shipping = request.ShippingAddress;
+
             // Créer la réservation
             var reservation = new Reservation
             {
@@ -190,7 +192,13 @@ public class CheckoutController : ControllerBase
                 TotalAmount = totalAmount,
                 Status = "pending",
                 ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(30),
-                Items = reservationItems
+                Items = reservationItems,
+                CustomerId = customer?.Id,
+                ShippingAddressLine1 = shipping?.AddressLine1,
+                ShippingAddressLine2 = shipping?.AddressLine2,
+                ShippingCity = shipping?.City,
+                ShippingPostalCode = shipping?.PostalCode,
+                ShippingCountry = shipping?.Country
             };
 
             _db.Reservations.Add(reservation);
@@ -219,7 +227,7 @@ public class CheckoutController : ControllerBase
                 Metadata = new Dictionary<string, string>
                 {
                     { "reservation_id", reservation.Id.ToString() },
-                    { "customer_id", customer?.IdCustomer.ToString() ?? "" }
+                    { "customer_id", customer?.Id.ToString() ?? "" }
                 },
                 ExpiresAt = DateTime.UtcNow.AddMinutes(30)
             };

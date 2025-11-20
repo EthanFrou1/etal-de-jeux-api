@@ -245,9 +245,25 @@ namespace EtalDeJeux.Api.Migrations
                         .HasColumnType("text")
                         .HasColumnName("currency");
 
+                    b.Property<string>("CustomerFirstName")
+                        .HasColumnType("text")
+                        .HasColumnName("customer_first_name");
+
                     b.Property<Guid?>("CustomerId")
                         .HasColumnType("uuid")
                         .HasColumnName("customer_id");
+
+                    b.Property<Guid?>("CustomerId1")
+                        .HasColumnType("uuid")
+                        .HasColumnName("customer_id1");
+
+                    b.Property<string>("CustomerLastName")
+                        .HasColumnType("text")
+                        .HasColumnName("customer_last_name");
+
+                    b.Property<string>("CustomerPhone")
+                        .HasColumnType("text")
+                        .HasColumnName("customer_phone");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -268,6 +284,26 @@ namespace EtalDeJeux.Api.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("reservation_id");
 
+                    b.Property<string>("ShippingAddressLine1")
+                        .HasColumnType("text")
+                        .HasColumnName("shipping_address_line1");
+
+                    b.Property<string>("ShippingAddressLine2")
+                        .HasColumnType("text")
+                        .HasColumnName("shipping_address_line2");
+
+                    b.Property<string>("ShippingCity")
+                        .HasColumnType("text")
+                        .HasColumnName("shipping_city");
+
+                    b.Property<string>("ShippingCountry")
+                        .HasColumnType("text")
+                        .HasColumnName("shipping_country");
+
+                    b.Property<string>("ShippingPostalCode")
+                        .HasColumnType("text")
+                        .HasColumnName("shipping_postal_code");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text")
@@ -282,6 +318,12 @@ namespace EtalDeJeux.Api.Migrations
 
                     b.HasIndex("CustomerId")
                         .HasDatabaseName("ix_orders_customer_id");
+
+                    b.HasIndex("CustomerId1")
+                        .HasDatabaseName("ix_orders_customer_id1");
+
+                    b.HasIndex("ReservationId")
+                        .HasDatabaseName("ix_orders_reservation_id");
 
                     b.HasIndex("Status", "CreatedAt")
                         .HasDatabaseName("ix_orders_status_created_at");
@@ -726,6 +768,26 @@ namespace EtalDeJeux.Api.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("metadata");
 
+                    b.Property<string>("ShippingAddressLine1")
+                        .HasColumnType("text")
+                        .HasColumnName("shipping_address_line1");
+
+                    b.Property<string>("ShippingAddressLine2")
+                        .HasColumnType("text")
+                        .HasColumnName("shipping_address_line2");
+
+                    b.Property<string>("ShippingCity")
+                        .HasColumnType("text")
+                        .HasColumnName("shipping_city");
+
+                    b.Property<string>("ShippingCountry")
+                        .HasColumnType("text")
+                        .HasColumnName("shipping_country");
+
+                    b.Property<string>("ShippingPostalCode")
+                        .HasColumnType("text")
+                        .HasColumnName("shipping_postal_code");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text")
@@ -911,6 +973,20 @@ namespace EtalDeJeux.Api.Migrations
                         .HasForeignKey("CustomerId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_orders_customers_customer_id");
+
+                    b.HasOne("EtalDeJeux.Api.Models.Customer", "Customer")
+                        .WithMany()
+                        .HasForeignKey("CustomerId1")
+                        .HasConstraintName("fk_orders_customers_customer_id1");
+
+                    b.HasOne("EtalDeJeux.Api.Models.Reservation", "Reservation")
+                        .WithMany()
+                        .HasForeignKey("ReservationId")
+                        .HasConstraintName("fk_orders_reservations_reservation_id");
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Reservation");
                 });
 
             modelBuilder.Entity("EtalDeJeux.Api.Models.OrderItem", b =>

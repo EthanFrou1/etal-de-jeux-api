@@ -21,4 +21,10 @@ public class Reservation
     public string Metadata { get; set; } = "{}"; // jsonb
 
     public List<ReservationItem> Items { get; set; } = new();
+
+    public string? ShippingAddressLine1 { get; set; }
+    public string? ShippingAddressLine2 { get; set; }
+    public string? ShippingCity { get; set; }
+    public string? ShippingPostalCode { get; set; }
+    public string? ShippingCountry { get; set; }
 }

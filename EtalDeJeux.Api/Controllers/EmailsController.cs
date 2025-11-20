@@ -1,6 +1,7 @@
 using EtalDeJeux.Api.Contracts.Dtos;
 using EtalDeJeux.Api.Contracts.Mapping;
 using EtalDeJeux.Api.Data;
+using EtalDeJeux.Api.Models;
 using EtalDeJeux.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,11 +14,13 @@ public class EmailsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IOrderEmailService _orderEmailService;
+    private readonly IEmailSender _emailSender;
 
-    public EmailsController(AppDbContext db, IOrderEmailService orderEmailService)
+    public EmailsController(AppDbContext db, IOrderEmailService orderEmailService, IEmailSender emailSender)
     {
         _db = db;
         _orderEmailService = orderEmailService;
+        _emailSender = emailSender;
     }
 
     [HttpPost("orders/{orderId:guid}/emails/confirm")]
@@ -83,5 +86,57 @@ public class EmailsController : ControllerBase
             .ToListAsync(ct);
 
         return Ok(new PaginatedEmailLogsDto(items, total, page));
+    }
+
+    [HttpPost("contact")]
+    public async Task<IActionResult> SendContactMessage(
+        [FromBody] ContactMessageDto dto,
+        CancellationToken ct)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(new { error = "Données invalides" });
+        }
+
+        // Adresse qui reçoit les messages (ton mail OmbreLude)
+        const string ownerEmail = "ombrelude@gmail.com";
+
+        var subject = $"[Contact OmbreLude] {dto.Subject}";
+
+        var body = $@"
+            Nouveau message depuis le formulaire de contact OmbreLude :
+
+            Nom : {dto.Name}
+            Email : {dto.Email}
+            Sujet : {dto.Subject}
+
+            Message :
+            {dto.Message}
+            ";
+
+        var (ok, messageId, error) =
+            await _emailSender.SendAsync(ownerEmail, subject, body, false, ct);
+
+        // On loggue dans EmailLogs (OrderId = null pour un simple contact)
+        var log = new EmailLog
+        {
+            OrderId = null,
+            ToEmail = ownerEmail,
+            Subject = subject,
+            Body = body,
+            MessageId = messageId,
+            Status = ok ? "sent" : "failed",
+            Error = error
+        };
+
+        _db.EmailLogs.Add(log);
+        await _db.SaveChangesAsync(ct);
+
+        if (!ok)
+        {
+            return StatusCode(500, new { error = "Échec de l'envoi du message." });
+        }
+
+        return Ok(log.ToDto());
     }
 }

@@ -5,7 +5,7 @@ namespace EtalDeJeux.Api.Models;
 public class Customer
 {
     [Key]
-    public Guid IdCustomer { get; set; }
+    public Guid Id { get; set; }
 
     [Required, MaxLength(100)]
     public string Email { get; set; } = default!;

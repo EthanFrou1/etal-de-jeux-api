@@ -23,4 +23,19 @@ public class Order
     public string Metadata { get; set; } = "{}"; // jsonb
 
     public List<OrderItem> Items { get; set; } = new();
+
+    public Reservation? Reservation { get; set; }
+    public Customer? Customer { get; set; }
+
+    // 🔹 Snapshot infos client au moment de la commande
+    public string? CustomerFirstName { get; set; }
+    public string? CustomerLastName { get; set; }
+    public string? CustomerPhone { get; set; }
+
+    // 🔹 Snapshot adresse de livraison
+    public string? ShippingAddressLine1 { get; set; }
+    public string? ShippingAddressLine2 { get; set; }
+    public string? ShippingCity { get; set; }
+    public string? ShippingPostalCode { get; set; }
+    public string? ShippingCountry { get; set; }
 }

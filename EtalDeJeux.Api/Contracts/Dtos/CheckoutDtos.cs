@@ -14,6 +14,14 @@ namespace EtalDeJeux.Api.Contracts.Dtos
             bool IsDigital
         );
 
+        public record ShippingAddressDto(
+            string AddressLine1,
+            string? AddressLine2,
+            string PostalCode,
+            string City,
+            string Country
+        );
+
         public record CreateCheckoutSessionRequest(
             List<CheckoutItem> Items,
             string Email,
@@ -21,7 +29,8 @@ namespace EtalDeJeux.Api.Contracts.Dtos
             string? LastName,
             string? Phone,
             string SuccessUrl,
-            string CancelUrl
+            string CancelUrl,
+            ShippingAddressDto? ShippingAddress
         );
 
         public record CreateCheckoutSessionResponse(

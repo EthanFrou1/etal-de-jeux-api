@@ -221,6 +221,7 @@ public class WebhooksController : ControllerBase
             reservation = await _db.Reservations
                 .Include(r => r.Items)
                 .ThenInclude(i => i.Sku)
+                .ThenInclude(s => s.Product)
                 .SingleOrDefaultAsync(r => r.Id == reservationId.Value, ct);
         }
         else if (order?.ReservationId is Guid rid)
@@ -228,6 +229,7 @@ public class WebhooksController : ControllerBase
             reservation = await _db.Reservations
                 .Include(r => r.Items)
                 .ThenInclude(i => i.Sku)
+                .ThenInclude(s => s.Product)
                 .SingleOrDefaultAsync(r => r.Id == rid, ct);
         }
 
@@ -276,6 +278,7 @@ public class WebhooksController : ControllerBase
         order.Email = session.CustomerDetails?.Email
             ?? session.CustomerEmail
             ?? order.Email;
+
         var previousOrderStatus = order.Status;
         order.Status = "paid";
         order.Currency = currency;
@@ -307,13 +310,46 @@ public class WebhooksController : ControllerBase
                     string.IsNullOrWhiteSpace(previousReservationStatus) ? "(aucun)" : previousReservationStatus,
                     reservation.Status);
             }
+
+            // 🔹 NEW : snapshot adresse de livraison depuis Reservation
+            order.ShippingAddressLine1 ??= reservation.ShippingAddressLine1;
+            order.ShippingAddressLine2 ??= reservation.ShippingAddressLine2;
+            order.ShippingCity ??= reservation.ShippingCity;
+            order.ShippingPostalCode ??= reservation.ShippingPostalCode;
+            order.ShippingCountry ??= reservation.ShippingCountry;
+
+            // 🔹 NEW : snapshot client depuis Customer (via reservation.CustomerId)
+            if (reservation.CustomerId.HasValue)
+            {
+                if (!order.CustomerId.HasValue)
+                {
+                    order.CustomerId = reservation.CustomerId;
+                }
+
+                var customer = await _db.Customers
+                    .SingleOrDefaultAsync(c => c.Id == reservation.CustomerId.Value, ct);
+
+                if (customer is not null)
+                {
+                    order.CustomerFirstName ??= customer.FirstName;
+                    order.CustomerLastName ??= customer.LastName;
+                    order.CustomerPhone ??= customer.Phone;
+
+                    // fallback email si jamais on n'en a toujours pas
+                    if (string.IsNullOrWhiteSpace(order.Email))
+                    {
+                        order.Email = customer.Email;
+                    }
+                }
+            }
         }
 
         if (order.Items.Count == 0 && reservation?.Items is { Count: > 0 })
         {
             foreach (var item in reservation.Items)
             {
-                var skuName = item.Sku?.Name ?? $"SKU {item.SkuId}";
+
+                var productName = item.Sku?.Product?.Name;
                 var skuPrice = item.Sku?.Price ?? 0m;
 
                 order.Items.Add(new OrderItem
@@ -322,7 +358,7 @@ public class WebhooksController : ControllerBase
                     OrderId = order.Id,
                     SkuId = item.SkuId,
                     Qty = item.Qty,
-                    NameSnapshot = skuName,
+                    NameSnapshot = productName,
                     UnitPrice = skuPrice
                 });
 
